@@ -1,7 +1,6 @@
 import sqlite3
 import json
 
-# データベースの初期化
 def initialize_database():
     conn = sqlite3.connect('settings.db')
     c = conn.cursor()
@@ -15,7 +14,6 @@ def initialize_database():
     conn.commit()
     conn.close()
 
-# 設定を保存する関数
 def save_settings(guild_id, bot_room_id, announce_channel_ids):
     conn = sqlite3.connect('settings.db')
     c = conn.cursor()
@@ -26,14 +24,12 @@ def save_settings(guild_id, bot_room_id, announce_channel_ids):
     conn.commit()
     conn.close()
 
-# 設定を読み込む関数
 def load_settings(guild_id):
     conn = sqlite3.connect('settings.db')
     c = conn.cursor()
     c.execute('SELECT bot_room_id, announce_channel_ids FROM settings WHERE guild_id = ?', (guild_id,))
     row = c.fetchone()
     conn.close()
-    
     if row:
         bot_room_id = row[0]
         announce_channel_ids = json.loads(row[1]) if row[1] else []
