@@ -1,15 +1,10 @@
-import os
 import discord
-from dotenv import load_dotenv
+import os
 from database import initialize_database, load_settings
 from settings import set_channel
 from vote import handle_question
 from team import split_into_teams  # team.pyからチーム分け機能をインポート
 from keep import keep_alive
-
-# .envファイルの読み込み
-load_dotenv()
-DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 
 class MyClient(discord.Client):
     async def on_ready(self):
@@ -65,4 +60,4 @@ keep_alive()
 initialize_database()
 
 # Botの実行
-client.run(DISCORD_TOKEN)
+client.run(os.environ['DISCORD_TOKEN'])
