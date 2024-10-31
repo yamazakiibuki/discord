@@ -1,10 +1,15 @@
-import discord
 import os
+import discord
+from dotenv import load_dotenv
 from database import initialize_database, load_settings
 from settings import set_channel
 from vote import handle_question
-from helpers import isContainedNoInput
+from team import split_into_teams  # team.pyからチーム分け機能をインポート
 from keep import keep_alive
+
+# .envファイルの読み込み
+load_dotenv()
+DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 
 class MyClient(discord.Client):
     async def on_ready(self):
@@ -14,10 +19,21 @@ class MyClient(discord.Client):
         if message.author.bot:
             return
         command = message.content.split(".")
+
+        # コマンドの分岐処理
         if command[0] == "set_channel":
             await set_channel(command, message)
         elif command[0] == "question":
             await handle_question(command, message)
+        elif command[0] == "team":
+            # チーム分けコマンド
+            voice_channel = message.author.voice.channel if message.author.voice else None
+            if voice_channel:
+                team_count = int(command[1]) if len(command) > 1 else 2  # デフォルトでチーム数2に設定
+                teams, response = await split_into_teams(voice_channel, team_count)
+                await message.channel.send(response)
+            else:
+                await message.channel.send("ボイスチャンネルに接続していません。")
         else:
             await message.channel.send("無効なコマンドです。")
 
@@ -38,6 +54,7 @@ class MyClient(discord.Client):
             elif not before.channel and after.channel:
                 await botRoom.send(f"**{after.channel.name}** に、__{member.name}__ が参加しました！")
 
+# BotのIntent設定
 intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
@@ -46,4 +63,6 @@ intents.members = True
 client = MyClient(intents=intents)
 keep_alive()
 initialize_database()
-client.run(os.environ['TOKEN'])
+
+# Botの実行
+client.run(DISCORD_TOKEN)
