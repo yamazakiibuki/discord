@@ -13,7 +13,13 @@ class MyClient(discord.Client):
     async def on_message(self, message):
         if message.author.bot:
             return
-        command = message.content.split(".")
+
+        # メッセージが「!」で始まらない場合は無視
+        if not message.content.startswith("!"):
+            return
+
+        # コマンド部分だけ取り出して処理
+        command = message.content[1:].strip().split(".")
 
         # コマンドの分岐処理
         if command[0] == "set_channel":
