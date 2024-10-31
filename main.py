@@ -60,4 +60,4 @@ keep_alive()
 initialize_database()
 
 # Botの実行
-client.run(os.environ['DISCORD_TOKEN'])
+client.run(os.environ['TOKEN'])
