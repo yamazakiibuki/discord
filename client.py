@@ -1,7 +1,7 @@
 import discord
 from database import save_settings, load_settings
-from utils import list_yesno, list_vote
 from discord_bot import DiscordBot
+from utils import list_yesno, list_vote, emphasize, underline
 
 class MyClient(discord.Client):
     def __init__(self, intents):
@@ -16,13 +16,10 @@ class MyClient(discord.Client):
             return
 
         command = message.content.split(".")
-
         if command[0] == "set_channel":
             await self.handle_set_channel(message, command)
-
         elif command[0] == "question":
             await self.handle_question(message, command)
-
         elif command[0] == "team":
             await self.handle_team(message, command)
 
@@ -35,8 +32,8 @@ class MyClient(discord.Client):
         channel_name = command[2]
         guild_id = message.guild.id
         channel = discord.utils.get(message.guild.channels, name=channel_name)
-
-        if channel is None:
+        
+        if not channel:
             await message.channel.send("指定されたチャンネル名が見つかりません。")
             return
 
@@ -48,22 +45,24 @@ class MyClient(discord.Client):
             announce_channel_ids.append(channel.id)
             save_settings(guild_id, load_settings(guild_id)[0], announce_channel_ids)
             await message.channel.send(f"アナウンスチャンネルを `{channel.name}` に設定しました。")
-        else:
-            await message.channel.send("チャンネルタイプが無効です。")
 
     async def handle_question(self, message, command):
+        if len(command) < 2:
+            await message.channel.send("質問の形式に誤りがあります。")
+            return
+
         if command[1] == "yes-no":
             embed = discord.Embed(title=command[2], color=discord.Colour.blue())
             voting_msg = await message.channel.send(embed=embed)
             for emoji in list_yesno:
                 await voting_msg.add_reaction(emoji)
+
         elif command[1] == "vote":
             embed = discord.Embed(title=command[2], color=discord.Colour.green())
-            vote_candidate = command[3:]
-            for i, candidate in enumerate(vote_candidate):
-                embed.description += f"{list_vote[i]}   {candidate}\n"
+            for i, candidate in enumerate(command[3:]):
+                embed.description += f"{list_vote[i]} {candidate}\n"
             voting_msg = await message.channel.send(embed=embed)
-            for i in range(len(vote_candidate)):
+            for i in range(len(command) - 3):
                 await voting_msg.add_reaction(list_vote[i])
 
     async def handle_team(self, message, command):
@@ -72,7 +71,4 @@ class MyClient(discord.Client):
         await message.channel.send(msg)
 
     async def on_member_join(self, member):
-        try:
-            await member.send(f"ようこそ、{member.name}さん！")
-        except Exception as e:
-            print(f"Failed to send welcome message: {e}")
+        await member.send(f"ようこそ、{member.name}さん！サーバーに参加していただきありがとうございます。")
