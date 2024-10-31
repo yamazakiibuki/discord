@@ -181,33 +181,33 @@ class MyClient(discord.Client):
         except Exception as e:
             print("Could not send message to {}: {}".format(member.name, e))
 
-async def on_voice_state_update(self, member, before, after):
-    guild_id = member.guild.id
+    async def on_voice_state_update(self, member, before, after):
+        guild_id = member.guild.id
 
-    botRoomID = load_settings(guild_id)[0]
-    if botRoomID is not None:
-        botRoom = self.get_channel(botRoomID)
+        botRoomID = load_settings(guild_id)[0]
+        if botRoomID is not None:
+            botRoom = self.get_channel(botRoomID)
 
-        if botRoom is None or not isinstance(botRoom, discord.TextChannel):
+            if botRoom is None or not isinstance(botRoom, discord.TextChannel):
+                print("ボットルームが設定されていません。")
+                return
+
+            # ミュート・デフの変化のみの場合は無視
+            if before.channel == after.channel:
+                return
+
+            # チャネルから退出した場合
+            if before.channel is not None and after.channel is None:
+                await botRoom.send(f"**{before.channel.name}** から、__{member.name}__ が抜けました！")
+                print(f"{member.name} が **{before.channel.name}** から抜けました。")
+
+            # チャネルに参加した場合
+            elif before.channel is None and after.channel is not None:
+                await botRoom.send(f"**{after.channel.name}** に、__{member.name}__ が参加しました！")
+                print(f"{member.name} が **{after.channel.name}** に参加しました。")
+
+        else:
             print("ボットルームが設定されていません。")
-            return
-
-        # ミュート・デフの変化のみの場合は無視
-        if before.channel == after.channel:
-            return
-
-        # チャネルから退出した場合
-        if before.channel is not None and after.channel is None:
-            await botRoom.send(f"**{before.channel.name}** から、__{member.name}__ が抜けました！")
-            print(f"{member.name} が **{before.channel.name}** から抜けました。")
-
-        # チャネルに参加した場合
-        elif before.channel is None and after.channel is not None:
-            await botRoom.send(f"**{after.channel.name}** に、__{member.name}__ が参加しました！")
-            print(f"{member.name} が **{after.channel.name}** に参加しました。")
-
-    else:
-        print("ボットルームが設定されていません。")
 
 # Discordの権限を設定
 intents = discord.Intents.default()
