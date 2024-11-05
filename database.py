@@ -11,17 +11,20 @@ def initialize_database():
             announce_channel_ids TEXT
         )
     ''')
+    
+    # 投票用テーブルの作成
     c.execute('''
         CREATE TABLE IF NOT EXISTS votes (
-            vote_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             guild_id INTEGER,
             question TEXT,
             options TEXT,
-            deadline DATETIME,
+            expiration TEXT,
             results TEXT,
             FOREIGN KEY (guild_id) REFERENCES settings (guild_id)
         )
     ''')
+    
     conn.commit()
     conn.close()
 
@@ -45,27 +48,37 @@ def load_settings(guild_id):
         return row[0], json.loads(row[1]) if row[1] else []
     return None, []
 
-def save_vote(guild_id, question, options, deadline):
+def save_vote(question, options, expiration):
     conn = sqlite3.connect('settings.db')
     c = conn.cursor()
     c.execute('''
-        INSERT INTO votes (guild_id, question, options, deadline, results)
+        INSERT INTO votes (guild_id, question, options, expiration, results)
         VALUES (?, ?, ?, ?, ?)
-    ''', (guild_id, question, json.dumps(options), deadline, json.dumps({})))
+    ''', (1, question, json.dumps(options), expiration, json.dumps({})))
     conn.commit()
     conn.close()
 
-def get_votes(guild_id):
+def get_votes():
     conn = sqlite3.connect('settings.db')
     c = conn.cursor()
-    c.execute('SELECT * FROM votes WHERE guild_id = ?', (guild_id,))
-    votes = c.fetchall()
+    c.execute('SELECT id, question, options, expiration, results FROM votes')
+    votes = []
+    for row in c.fetchall():
+        votes.append({
+            'id': row[0],
+            'question': row[1],
+            'options': json.loads(row[2]),
+            'expiration': row[3],
+            'results': json.loads(row[4]) if row[4] else {}
+        })
     conn.close()
     return votes
 
-def delete_vote(vote_id):
+def delete_vote_entry(vote_id):
     conn = sqlite3.connect('settings.db')
     c = conn.cursor()
-    c.execute('DELETE FROM votes WHERE vote_id = ?', (vote_id,))
+    c.execute('DELETE FROM votes WHERE id = ?', (vote_id,))
     conn.commit()
+    rowcount = c.rowcount
     conn.close()
+    return rowcount > 0
