@@ -1,9 +1,9 @@
 import discord
 import os
 from datetime import datetime
-from database import initialize_database, load_settings
+from database import initialize_database, load_settings, initialize_vote_database
 from settings import set_channel
-from vote import handle_question_navigation  # 修正: 関数名を変更
+from vote import handle_question_navigation, list_votes, delete_vote
 from team import split_into_teams
 from keep import keep_alive
 from scheduler import initialize_scheduler, scheduler
@@ -12,6 +12,7 @@ class MyClient(discord.Client):
     async def on_ready(self):
         print('Startup Success!!!')
         initialize_scheduler()  # スケジューラの初期化
+        initialize_vote_database()  # 投票データベースの初期化
 
     async def on_message(self, message):
         if message.author.bot:
@@ -25,7 +26,11 @@ class MyClient(discord.Client):
         if command[0] == "set_channel":
             await set_channel(command, message)
         elif command[0] == "question":
-            await handle_question_navigation(command, message, self)  # client (self) を引数として渡す
+            await handle_question_navigation(command, message, self)  # ボットのナビゲート機能
+        elif command[0] == "list_votes":
+            await list_votes(message)
+        elif command[0] == "delete_vote":
+            await delete_vote(command, message)
         elif command[0] == "team":
             if isinstance(message.author, discord.Member) and message.author.voice:
                 voice_channel = message.author.voice.channel
@@ -60,7 +65,7 @@ class MyClient(discord.Client):
 
             await self.set_schedule(message.channel, date_str, time_str, content)
 
-        except asyncio.TimeoutError:
+        except discord.TimeoutError:
             await message.channel.send("タイムアウトしました。再度コマンドを実行してください。")
 
     async def set_schedule(self, channel, date_str, time_str, content):
@@ -109,4 +114,4 @@ keep_alive()
 initialize_database()
 
 # Bot実行
-client.run(os.environ['TOKEN'])
+client.run(os.getenv('TOKEN'))
