@@ -35,24 +35,47 @@ class MyClient(discord.Client):
             else:
                 await message.channel.send("ボイスチャンネルに接続していません。")
         elif command[0] == "set_schedule":
-            # スケジュールコマンドの処理
-            if len(command) >= 4:
-                date_str, time_str, content = command[1], command[2], " ".join(command[3:])
-                try:
-                    schedule_time = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
-                    if schedule_time < datetime.now():
-                        await message.channel.send("指定された日時は過去です。未来の日時を指定してください。")
-                        return
-                except ValueError:
-                    await message.channel.send("日付や時刻の形式が正しくありません。例: !set_schedule 2024-12-25 15:00 イベント")
-                    return
-
-                await message.channel.send(f"予定が設定されました！\n日時: {schedule_time}\n内容: {content}")
-                scheduler.add_job(self.send_reminder, "date", run_date=schedule_time, args=[message.channel, content])
-            else:
-                await message.channel.send("コマンド形式が正しくありません。例: !set_schedule 2024-12-25 15:00 イベント")
+            await self.start_schedule_navigation(message)
         else:
             await message.channel.send("無効なコマンドです。")
+
+    async def start_schedule_navigation(self, message):
+        """スケジュール設定のナビゲーションを開始する"""
+        await message.channel.send("スケジュール設定を始めます。最初に日付を入力してください（例: 2024-12-25）。")
+
+        def check(msg):
+            return msg.author == message.author and msg.channel == message.channel
+
+        try:
+            date_msg = await self.wait_for('message', check=check, timeout=60.0)
+            date_str = date_msg.content
+
+            await message.channel.send("次に時間を入力してください（例: 15:00）。")
+            time_msg = await self.wait_for('message', check=check, timeout=60.0)
+            time_str = time_msg.content
+
+            await message.channel.send("最後に内容を入力してください。")
+            content_msg = await self.wait_for('message', check=check, timeout=60.0)
+            content = content_msg.content
+
+            await self.set_schedule(message.channel, date_str, time_str, content)
+
+        except discord.TimeoutError:
+            await message.channel.send("タイムアウトしました。再度コマンドを実行してください。")
+
+    async def set_schedule(self, channel, date_str, time_str, content):
+        """スケジュールを設定する"""
+        try:
+            schedule_time = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+            if schedule_time < datetime.now():
+                await channel.send("指定された日時は過去です。未来の日時を指定してください。")
+                return
+        except ValueError:
+            await channel.send("日付や時刻の形式が正しくありません。例: !set_schedule 2024-12-25 15:00 イベント")
+            return
+
+        await channel.send(f"予定が設定されました！\n日時: {schedule_time}\n内容: {content}")
+        scheduler.add_job(self.send_reminder, "date", run_date=schedule_time, args=[channel, content])
 
     async def send_reminder(self, channel, content):
         await channel.send(f"🔔 リマインダー: {content} の時間です！🔔")
