@@ -3,10 +3,10 @@ import os
 from datetime import datetime
 from database import initialize_database, load_settings, initialize_vote_database
 from settings import set_channel
-from vote import handle_question_navigation, list_votes, delete_vote
+from vote import handle_question, handle_question_navigation, list_votes, delete_vote
 from team import split_into_teams
 from keep import keep_alive
-from scheduler import initialize_scheduler, scheduler
+from scheduler import initialize_scheduler
 
 class MyClient(discord.Client):
     async def on_ready(self):
@@ -26,7 +26,7 @@ class MyClient(discord.Client):
         if command[0] == "set_channel":
             await set_channel(command, message)
         elif command[0] == "question":
-            await handle_question_navigation(command, message, self)  # ボットのナビゲート機能
+            await handle_question(command, message)
         elif command[0] == "list_votes":
             await list_votes(message)
         elif command[0] == "delete_vote":
@@ -80,10 +80,6 @@ class MyClient(discord.Client):
             return
 
         await channel.send(f"予定が設定されました！\n日時: {schedule_time}\n内容: {content}")
-        scheduler.add_job(self.send_reminder, "date", run_date=schedule_time, args=[channel, content])
-
-    async def send_reminder(self, channel, content):
-        await channel.send(f"🔔 リマインダー: {content} の時間です！🔔")
 
     async def on_member_join(self, member):
         try:
@@ -111,7 +107,7 @@ intents.members = True
 # Botのインスタンス
 client = MyClient(intents=intents)
 keep_alive()
-initialize_database()
+initialize_database()  # データベースの初期化
 
 # Bot実行
-client.run(os.getenv('TOKEN'))
+client.run(os.environ['TOKEN'])
