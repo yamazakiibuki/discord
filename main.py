@@ -3,8 +3,9 @@ import os
 from database import initialize_database, load_settings
 from settings import set_channel
 from vote import handle_question
-from team import split_into_teams  # team.pyからチーム分け機能をインポート
+from team import split_into_teams
 from keep import keep_alive
+from scheduler import set_schedule, initialize_scheduler
 
 class MyClient(discord.Client):
     async def on_ready(self):
@@ -35,6 +36,12 @@ class MyClient(discord.Client):
                 await message.channel.send(response)
             else:
                 await message.channel.send("ボイスチャンネルに接続していません。")
+        elif command[0] == "set_schedule":
+            # スケジュールコマンドを実行
+            if len(command) >= 3:
+                await set_schedule(message.channel, command[1], command[2], " ".join(command[3:]))
+            else:
+                await message.channel.send("コマンド形式が正しくありません。例: !set_schedule 2024-12-25 15:00 イベント")
         else:
             await message.channel.send("無効なコマンドです。")
 
@@ -55,15 +62,17 @@ class MyClient(discord.Client):
             elif not before.channel and after.channel:
                 await botRoom.send(f"**{after.channel.name}** に、__{member.name}__ が参加しました！")
 
-# BotのIntent設定
+# Intent設定
 intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
 intents.members = True
 
+# Botのインスタンス
 client = MyClient(intents=intents)
 keep_alive()
 initialize_database()
+initialize_scheduler()  # スケジューラの初期化
 
-# Botの実行
+# Bot実行
 client.run(os.environ['TOKEN'])
