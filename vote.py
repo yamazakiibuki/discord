@@ -1,5 +1,4 @@
 import discord
-from discord import TimeoutError
 from datetime import datetime
 from database import save_vote, get_votes, delete_vote_entry
 
@@ -33,14 +32,22 @@ async def create_vote_question(command, message):
         return
 
     question = command[2]
-    options = command[3:-1]  # 最後の要素は期限
-    expiration = command[-1] if len(command) > 3 else None
+    options = command[3:-1]
+    expiration = command[-1] if len(command) > 4 else None
 
+    # expirationのフォーマット確認
+    if expiration:
+        try:
+            datetime.strptime(expiration, '%Y-%m-%d %H:%M')
+        except ValueError:
+            await message.channel.send("期限の形式が正しくありません。例: 2024-12-25 15:00")
+            return
+
+    # 選択肢の制限をチェック
     if len(options) > 10:
         await message.channel.send("選択肢は最大10個までです。")
         return
 
-    # 投票データを保存
     save_vote(question, options, expiration)
 
     embed = discord.Embed(title=question, color=discord.Colour.green())
@@ -59,7 +66,8 @@ async def list_votes(message):
 
     embed = discord.Embed(title="投票一覧", color=discord.Colour.gold())
     for vote in votes:
-        result = vote['results'] if datetime.now() < datetime.strptime(vote['expiration'], '%Y-%m-%d %H:%M') else '未定'
+        expiration_date = datetime.strptime(vote['expiration'], '%Y-%m-%d %H:%M')
+        result = vote['results'] if datetime.now() < expiration_date else '未定'
         embed.add_field(name=vote['question'], value=f"結果: {result or '未定'}", inline=False)
     await message.channel.send(embed=embed)
 
