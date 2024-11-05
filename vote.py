@@ -1,50 +1,76 @@
 import discord
+from discord import TimeoutError
 from datetime import datetime
-from database import save_vote, get_votes, delete_vote
+from database import save_vote, get_votes, delete_vote_entry
 
-async def handle_question_navigation(command, message):
-    await message.channel.send("投票の質問内容を入力してください。")
-
-    def check(msg):
-        return msg.author == message.author and msg.channel == message.channel
-
-    try:
-        question_msg = await message.channel.send("質問を入力してください。")
-        question = await message.channel.client.wait_for('message', check=check, timeout=60.0)
-
-        await message.channel.send("選択肢を入力してください（例: 肢1).(選択肢2)...）")
-        options_msg = await message.channel.client.wait_for('message', check=check, timeout=60.0)
-        options = options_msg.content.split('.')
-
-        await message.channel.send("投票の期限を入力してください（例: 2024-12-25 15:00）。")
-        deadline_msg = await message.channel.client.wait_for('message', check=check, timeout=60.0)
-        deadline_str = deadline_msg.content
-
-        deadline = datetime.strptime(deadline_str, "%Y-%m-%d %H:%M")
-
-        if deadline < datetime.now():
-            await message.channel.send("指定された日時は過去です。未来の日時を指定してください。")
-            return
-
-        await save_vote(message.guild.id, question.content, options, deadline.isoformat())
-        await message.channel.send("投票が作成されました！")
-
-    except discord.TimeoutError:
-        await message.channel.send("タイムアウトしました。再度コマンドを実行してください。")
-
-async def show_votes(message):
-    votes = get_votes(message.guild.id)
-    if not votes:
-        await message.channel.send("現在、登録されている投票はありません。")
+async def handle_question_navigation(command, message, client):
+    if len(command) < 3:
+        await message.channel.send("コマンドが不完全です。")
         return
 
-    for vote in votes:
-        vote_id, guild_id, question, options, deadline, results = vote
-        options_list = json.loads(options)
-        results_dict = json.loads(results)
-        results_display = {option: results_dict.get(option, "未定") for option in options_list}
-        await message.channel.send(f"投票 ID: {vote_id}\n質問: {question}\n選択肢: {options_list}\n結果: {results_display}\n期限: {deadline}")
+    question_type = command[1]
 
-async def delete_vote_command(vote_id, message):
-    delete_vote(vote_id)
-    await message.channel.send(f"投票 ID {vote_id} が削除されました。")
+    if question_type == "yes-no":
+        await create_yes_no_question(command, message)
+    elif question_type == "vote":
+        await create_vote_question(command, message)
+    elif question_type == "list":
+        await list_votes(message)
+    elif question_type == "delete":
+        await delete_vote(command, message)
+    else:
+        await message.channel.send("無効な質問タイプです。")
+
+async def create_yes_no_question(command, message):
+    embed = discord.Embed(title=command[2], color=discord.Colour.blue())
+    voting_msg = await message.channel.send(embed=embed)
+    await voting_msg.add_reaction('✅')
+    await voting_msg.add_reaction('❌')
+
+async def create_vote_question(command, message):
+    if len(command) < 4:
+        await message.channel.send("投票の選択肢を指定してください。")
+        return
+
+    question = command[2]
+    options = command[3:-1]  # 最後の要素は期限
+    expiration = command[-1] if len(command) > 3 else None
+
+    if len(options) > 10:
+        await message.channel.send("選択肢は最大10個までです。")
+        return
+
+    # 投票データを保存
+    save_vote(question, options, expiration)
+
+    embed = discord.Embed(title=question, color=discord.Colour.green())
+    for i, option in enumerate(options):
+        embed.description += f"{i + 1}. {option}\n"
+    voting_msg = await message.channel.send(embed=embed)
+
+    for i in range(len(options)):
+        await voting_msg.add_reaction(str(i + 1) + '️⃣')
+
+async def list_votes(message):
+    votes = get_votes()
+    if not votes:
+        await message.channel.send("現在の投票はありません。")
+        return
+
+    embed = discord.Embed(title="投票一覧", color=discord.Colour.gold())
+    for vote in votes:
+        result = vote['results'] if datetime.now() < datetime.strptime(vote['expiration'], '%Y-%m-%d %H:%M') else '未定'
+        embed.add_field(name=vote['question'], value=f"結果: {result or '未定'}", inline=False)
+    await message.channel.send(embed=embed)
+
+async def delete_vote(command, message):
+    if len(command) < 3:
+        await message.channel.send("削除する投票のIDを指定してください。")
+        return
+
+    vote_id = int(command[2])
+    success = delete_vote_entry(vote_id)
+    if success:
+        await message.channel.send(f"投票 ID {vote_id} を削除しました。")
+    else:
+        await message.channel.send("指定された投票は見つかりません。")
