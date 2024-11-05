@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 from database import initialize_database, load_settings
 from settings import set_channel
-from vote import handle_question_navigation
+from vote import handle_question_navigation  # 修正: 関数名を変更
 from team import split_into_teams
 from keep import keep_alive
 from scheduler import initialize_scheduler, scheduler
@@ -25,7 +25,7 @@ class MyClient(discord.Client):
         if command[0] == "set_channel":
             await set_channel(command, message)
         elif command[0] == "question":
-            await handle_question_navigation(command, message)
+            await handle_question_navigation(command, message, self)  # client (self) を引数として渡す
         elif command[0] == "team":
             if isinstance(message.author, discord.Member) and message.author.voice:
                 voice_channel = message.author.voice.channel
@@ -60,7 +60,7 @@ class MyClient(discord.Client):
 
             await self.set_schedule(message.channel, date_str, time_str, content)
 
-        except discord.TimeoutError:
+        except asyncio.TimeoutError:
             await message.channel.send("タイムアウトしました。再度コマンドを実行してください。")
 
     async def set_schedule(self, channel, date_str, time_str, content):
