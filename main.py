@@ -1,7 +1,7 @@
 import discord
 import os
 from datetime import datetime
-from database import initialize_database, load_settings, initialize_vote_database
+from database import initialize_database, load_settings
 from settings import set_channel
 from vote import handle_question, handle_question_navigation, list_votes, delete_vote
 from team import split_into_teams
@@ -12,7 +12,7 @@ class MyClient(discord.Client):
     async def on_ready(self):
         print('Startup Success!!!')
         initialize_scheduler()  # スケジューラの初期化
-        initialize_vote_database()  # 投票データベースの初期化
+        initialize_database()   # データベースの初期化
 
     async def on_message(self, message):
         if message.author.bot:
