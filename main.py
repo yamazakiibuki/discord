@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 from database import initialize_database, load_settings
 from settings import set_channel
-from vote import handle_question, handle_question_navigation, list_votes, delete_vote
+from vote import handle_question_navigation, list_votes, delete_vote  # 修正
 from team import split_into_teams
 from keep import keep_alive
 from scheduler import initialize_scheduler
@@ -26,7 +26,7 @@ class MyClient(discord.Client):
         if command[0] == "set_channel":
             await set_channel(command, message)
         elif command[0] == "question":
-            await handle_question(command, message)
+            await handle_question_navigation(command, message, self)  # handle_question_navigationを使用
         elif command[0] == "list_votes":
             await list_votes(message)
         elif command[0] == "delete_vote":
