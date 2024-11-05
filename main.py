@@ -15,22 +15,19 @@ class MyClient(discord.Client):
         if message.author.bot:
             return
 
-        # メッセージが「!」で始まらない場合は無視
         if not message.content.startswith("!"):
             return
 
-        # コマンド部分だけ取り出して処理
         command = message.content[1:].strip().split(".")
 
-        # コマンドの分岐処理
         if command[0] == "set_channel":
             await set_channel(command, message)
         elif command[0] == "question":
             await handle_question(command, message)
         elif command[0] == "team":
             # チーム分けコマンド
-            voice_channel = message.author.voice.channel if message.author.voice else None
-            if voice_channel:
+            if isinstance(message.author, discord.Member) and message.author.voice:
+                voice_channel = message.author.voice.channel
                 team_count = int(command[1]) if len(command) > 1 else 2  # デフォルトでチーム数2に設定
                 teams, response = await split_into_teams(voice_channel, team_count)
                 await message.channel.send(response)
