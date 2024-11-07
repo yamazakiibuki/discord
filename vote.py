@@ -35,7 +35,7 @@ async def create_vote_question_step_by_step(message):
 
     try:
         question_msg = await message.channel.send("質問を入力してください。")
-        question_response = await message.channel.send("質問: ")
+        question_response = await client.wait_for('message', check=check, timeout=60.0)
         question = question_response.content
 
         await message.channel.send("選択肢をカンマで区切って入力してください（例: はい,いいえ,たぶん）。最大10個まで指定できます。")
