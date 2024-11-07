@@ -38,4 +38,42 @@ async def create_vote_question_step_by_step(message):
         question_response = await message.channel.send("質問: ")
         question = question_response.content
 
-        await message.channel.send("選択肢 .
+        await message.channel.send("選択肢をカンマで区切って入力してください（例: はい,いいえ,たぶん）。最大10個まで指定できます。")
+        options_msg = await client.wait_for('message', check=check, timeout=60.0)
+        options = [opt.strip() for opt in options_msg.content.split(',')]
+
+        if len(options) > 10:
+            await message.channel.send("選択肢は最大10個までです。")
+            return
+
+        # ステップ 3: 有効期限の入力（任意）
+        await message.channel.send("投票の有効期限を指定してください（例: 2024-12-25 15:00）。スキップする場合は「スキップ」と入力してください。")
+        expiration_msg = await client.wait_for('message', check=check, timeout=60.0)
+        expiration = expiration_msg.content
+
+        if expiration.lower() != "スキップ":
+            try:
+                expiration = datetime.strptime(expiration, '%Y-%m-%d %H:%M')
+            except ValueError:
+                await message.channel.send("日付と時刻の形式が正しくありません。例: 2024-12-25 15:00")
+                return
+        else:
+            expiration = None
+
+        # 投票の保存
+        save_vote(question, options, expiration.strftime('%Y-%m-%d %H:%M') if expiration else None)
+
+        # 投票を表示
+        embed = discord.Embed(title=question, color=discord.Colour.green())
+        for i, option in enumerate(options):
+            embed.description += f"{i + 1}. {option}\n"
+        voting_msg = await message.channel.send(embed=embed)
+
+        # リアクションを追加
+        for i in range(len(options)):
+            await voting_msg.add_reaction(str(i + 1) + '️⃣')
+
+        await message.channel.send("投票が作成されました。リアクションを使って投票を行ってください！")
+
+    except discord.TimeoutError:
+        await message.channel.send("タイムアウトしました。もう一度最初からやり直してください。")
