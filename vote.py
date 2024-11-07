@@ -12,7 +12,7 @@ async def handle_question_navigation(command, message, client):
     if question_type == "yes-no":
         await create_yes_no_question(command, message)
     elif question_type == "vote":
-        await create_vote_question_step_by_step(message)
+        await create_vote_question_step_by_step(message, client)
     elif question_type == "list":
         await list_votes(message)
     elif question_type == "delete":
@@ -26,7 +26,7 @@ async def create_yes_no_question(command, message):
     await voting_msg.add_reaction('✅')
     await voting_msg.add_reaction('❌')
 
-async def create_vote_question_step_by_step(message):
+async def create_vote_question_step_by_step(message, client):
     """ガイド付きで投票を作成する"""
     await message.channel.send("新しい投票を作成します。質問を入力してください。")
 
@@ -66,7 +66,7 @@ async def create_vote_question_step_by_step(message):
         # 投票を表示
         embed = discord.Embed(title=question, color=discord.Colour.green())
         for i, option in enumerate(options):
-            embed.description += f"{i + 1}. {option}\n"
+            embed.description = (embed.description or '') + f"{i + 1}. {option}\n"
         voting_msg = await message.channel.send(embed=embed)
 
         # リアクションを追加
