@@ -77,3 +77,28 @@ async def create_vote_question_step_by_step(message):
 
     except discord.TimeoutError:
         await message.channel.send("タイムアウトしました。もう一度最初からやり直してください。")
+
+async def list_votes(message):
+    votes = get_votes()
+    if not votes:
+        await message.channel.send("現在の投票はありません。")
+        return
+
+    embed = discord.Embed(title="投票一覧", color=discord.Colour.gold())
+    for vote in votes:
+        expiration_date = datetime.strptime(vote['expiration'], '%Y-%m-%d %H:%M')
+        result = vote['results'] if datetime.now() < expiration_date else '未定'
+        embed.add_field(name=vote['question'], value=f"結果: {result or '未定'}", inline=False)
+    await message.channel.send(embed=embed)
+
+async def delete_vote(command, message):
+    if len(command) < 3:
+        await message.channel.send("削除する投票のIDを指定してください。")
+        return
+
+    vote_id = int(command[2])
+    success = delete_vote_entry(vote_id)
+    if success:
+        await message.channel.send(f"投票 ID {vote_id} を削除しました。")
+    else:
+        await message.channel.send("指定された投票は見つかりません。")
