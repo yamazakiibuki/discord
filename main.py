@@ -21,7 +21,7 @@ class MyClient(discord.Client):
         if not message.content.startswith("!"):
             return
 
-        command = message.content[1:].strip().split(".")
+        command = message.content[1:].strip().split(" ")
 
         if command[0] == "set_channel":
             await set_channel(command, message)
@@ -32,17 +32,20 @@ class MyClient(discord.Client):
         elif command[0] == "delete_vote":
             await delete_vote(command, message)
         elif command[0] == "team":
-            if isinstance(message.author, discord.Member) and message.author.voice:
-                voice_channel = message.author.voice.channel
-                team_count = int(command[1]) if len(command) > 1 else 2
-                teams, response = await split_into_teams(voice_channel, team_count)
-                await message.channel.send(response)
-            else:
-                await message.channel.send("ボイスチャンネルに接続していません。")
+            await self.handle_team_command(command, message)
         elif command[0] == "set_schedule":
             await self.start_schedule_navigation(message)
         else:
             await message.channel.send("無効なコマンドです。")
+
+    async def handle_team_command(self, command, message):
+        if isinstance(message.author, discord.Member) and message.author.voice:
+            voice_channel = message.author.voice.channel
+            team_count = int(command[1]) if len(command) > 1 else 2
+            teams, response = await split_into_teams(voice_channel, team_count)
+            await message.channel.send(response)
+        else:
+            await message.channel.send("ボイスチャンネルに接続していません。")
 
     async def start_schedule_navigation(self, message):
         await message.channel.send("スケジュール設定を始めます。最初に日付を入力してください（例: 2024-12-25）。")
@@ -74,7 +77,7 @@ class MyClient(discord.Client):
                 await channel.send("指定された日時は過去です。未来の日時を指定してください。")
                 return
         except ValueError:
-            await channel.send("日付や時刻の形式が正しくありません。例: !set_schedule 2024-12-25 15:00 イベント")
+            await channel.send("日付や時刻の形式が正しくありません。例: 2024-12-25 15:00")
             return
 
         await channel.send(f"予定が設定されました！\n日時: {schedule_time}\n内容: {content}")
@@ -87,8 +90,13 @@ class MyClient(discord.Client):
             print(f"Could not send message to {member.name}: {e}")
 
     async def on_voice_state_update(self, member, before, after):
-        botRoomID = load_settings(member.guild.id)[0]
-        botRoom = self.get_channel(botRoomID) if botRoomID else None
+        settings = load_settings(member.guild.id)
+        if not settings:
+            print(f"Settings not found for guild ID {member.guild.id}")
+            return
+
+        botRoomID = settings[0]
+        botRoom = self.get_channel(botRoomID)
 
         if botRoom and before.channel != after.channel:
             if before.channel and not after.channel:
@@ -103,5 +111,8 @@ intents.members = True
 
 client = MyClient(intents=intents)
 keep_alive()
-initialize_database()
-client.run(os.environ['TOKEN'])
+
+if 'TOKEN' not in os.environ:
+    print("Error: Discord bot token not found in environment variables.")
+else:
+    client.run(os.environ['TOKEN'])
