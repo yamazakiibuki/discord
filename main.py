@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 from database import initialize_database, load_settings
 from settings import set_channel
-from vote import handle_question_navigation, list_votes, delete_vote  # 修正
+from vote import handle_question_navigation, list_votes, delete_vote
 from team import split_into_teams
 from keep import keep_alive
 from scheduler import initialize_scheduler
@@ -11,8 +11,8 @@ from scheduler import initialize_scheduler
 class MyClient(discord.Client):
     async def on_ready(self):
         print('Startup Success!!!')
-        initialize_scheduler()  # スケジューラの初期化
-        initialize_database()   # データベースの初期化
+        initialize_scheduler()
+        initialize_database()
 
     async def on_message(self, message):
         if message.author.bot:
@@ -26,7 +26,7 @@ class MyClient(discord.Client):
         if command[0] == "set_channel":
             await set_channel(command, message)
         elif command[0] == "question":
-            await handle_question_navigation(command, message, self)  # handle_question_navigationを使用
+            await handle_question_navigation(command, message, self)
         elif command[0] == "list_votes":
             await list_votes(message)
         elif command[0] == "delete_vote":
@@ -34,7 +34,7 @@ class MyClient(discord.Client):
         elif command[0] == "team":
             if isinstance(message.author, discord.Member) and message.author.voice:
                 voice_channel = message.author.voice.channel
-                team_count = int(command[1]) if len(command) > 1 else 2  # デフォルトでチーム数2に設定
+                team_count = int(command[1]) if len(command) > 1 else 2
                 teams, response = await split_into_teams(voice_channel, team_count)
                 await message.channel.send(response)
             else:
@@ -45,7 +45,6 @@ class MyClient(discord.Client):
             await message.channel.send("無効なコマンドです。")
 
     async def start_schedule_navigation(self, message):
-        """スケジュール設定のナビゲーションを開始する"""
         await message.channel.send("スケジュール設定を始めます。最初に日付を入力してください（例: 2024-12-25）。")
 
         def check(msg):
@@ -69,7 +68,6 @@ class MyClient(discord.Client):
             await message.channel.send("タイムアウトしました。再度コマンドを実行してください。")
 
     async def set_schedule(self, channel, date_str, time_str, content):
-        """スケジュールを設定する"""
         try:
             schedule_time = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
             if schedule_time < datetime.now():
@@ -98,16 +96,12 @@ class MyClient(discord.Client):
             elif not before.channel and after.channel:
                 await botRoom.send(f"**{after.channel.name}** に、__{member.name}__ が参加しました！")
 
-# Intent設定
 intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
 intents.members = True
 
-# Botのインスタンス
 client = MyClient(intents=intents)
 keep_alive()
-initialize_database()  # データベースの初期化
-
-# Bot実行
+initialize_database()
 client.run(os.environ['TOKEN'])
