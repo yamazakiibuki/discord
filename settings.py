@@ -21,7 +21,7 @@ async def set_channel(message, temporary_settings):
         "例: `BOT_ROOM`"
     )
 
-async def handle_channel_setup(message):
+async def handle_channel_setup(message, temporary_settings):
     user_id = message.author.id
 
     if user_id not in temporary_settings:
@@ -58,4 +58,15 @@ async def handle_channel_setup(message):
             return
 
         # データベースに保存
-        current_settings = load
+        try:
+            save_settings(guild_id, channel_type, channel.id)
+        except Exception as e:
+            await message.channel.send(f"エラーが発生しました: {e}")
+            return
+
+        # 一時的な設定を削除
+        del temporary_settings[user_id]
+
+        await message.channel.send(
+            f"{channel_name} チャンネルを {channel_type} に設定しました！"
+        )
