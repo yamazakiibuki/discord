@@ -1,27 +1,34 @@
-import sqlite3
+import psycopg2
 import json
 from datetime import datetime
 
+DATABASE_URL = "postgres://koyeb-adm:TJQV65jSfXBK@ep-curly-mode-a2v5q610.eu-central-1.pg.koyeb.app/koyebdb"
+
+def get_connection():
+    """PostgreSQL接続を取得"""
+    return psycopg2.connect(DATABASE_URL, sslmode="require")
+
 def initialize_database():
-    conn = sqlite3.connect('settings.db')
+    conn = get_connection()
     c = conn.cursor()
+    # 設定テーブルの作成
     c.execute('''
         CREATE TABLE IF NOT EXISTS settings (
-            guild_id INTEGER PRIMARY KEY,
-            bot_room_id INTEGER,
-            announce_channel_ids TEXT
+            guild_id BIGINT PRIMARY KEY,
+            bot_room_id BIGINT,
+            announce_channel_ids JSON
         )
     ''')
     
-    # 投票用テーブルの作成
+    # 投票テーブルの作成
     c.execute('''
         CREATE TABLE IF NOT EXISTS votes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            guild_id INTEGER,
+            id SERIAL PRIMARY KEY,
+            guild_id BIGINT,
             question TEXT,
-            options TEXT,
-            expiration TEXT,
-            results TEXT,
+            options JSON,
+            expiration TIMESTAMP,
+            results JSON,
             FOREIGN KEY (guild_id) REFERENCES settings (guild_id)
         )
     ''')
@@ -30,19 +37,21 @@ def initialize_database():
     conn.close()
 
 def save_settings(guild_id, bot_room_id, announce_channel_ids):
-    conn = sqlite3.connect('settings.db')
+    conn = get_connection()
     c = conn.cursor()
     c.execute('''
-        INSERT OR REPLACE INTO settings (guild_id, bot_room_id, announce_channel_ids)
-        VALUES (?, ?, ?)
+        INSERT INTO settings (guild_id, bot_room_id, announce_channel_ids)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (guild_id) DO UPDATE 
+        SET bot_room_id = EXCLUDED.bot_room_id, announce_channel_ids = EXCLUDED.announce_channel_ids
     ''', (guild_id, bot_room_id, json.dumps(announce_channel_ids)))
     conn.commit()
     conn.close()
 
 def load_settings(guild_id):
-    conn = sqlite3.connect('settings.db')
+    conn = get_connection()
     c = conn.cursor()
-    c.execute('SELECT bot_room_id, announce_channel_ids FROM settings WHERE guild_id = ?', (guild_id,))
+    c.execute('SELECT bot_room_id, announce_channel_ids FROM settings WHERE guild_id = %s', (guild_id,))
     row = c.fetchone()
     conn.close()
     if row:
@@ -50,17 +59,17 @@ def load_settings(guild_id):
     return None, []
 
 def save_vote(question, options, expiration):
-    conn = sqlite3.connect('settings.db')
+    conn = get_connection()
     c = conn.cursor()
     c.execute('''
         INSERT INTO votes (guild_id, question, options, expiration, results)
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s)
     ''', (1, question, json.dumps(options), expiration, json.dumps({})))
     conn.commit()
     conn.close()
 
 def get_votes():
-    conn = sqlite3.connect('settings.db')
+    conn = get_connection()
     c = conn.cursor()
     c.execute('SELECT id, question, options, expiration, results FROM votes')
     votes = []
@@ -76,9 +85,9 @@ def get_votes():
     return votes
 
 def delete_vote_entry(vote_id):
-    conn = sqlite3.connect('settings.db')
+    conn = get_connection()
     c = conn.cursor()
-    c.execute('DELETE FROM votes WHERE id = ?', (vote_id,))
+    c.execute('DELETE FROM votes WHERE id = %s', (vote_id,))
     conn.commit()
     rowcount = c.rowcount
     conn.close()
