@@ -1,7 +1,7 @@
 import discord
 import os
 from datetime import datetime
-from database import initialize_database, load_settings
+from database import initialize_database
 from settings import set_channel, handle_channel_setup
 from vote import handle_question_navigation, list_votes, delete_vote
 from team import split_into_teams
@@ -30,8 +30,11 @@ class MyClient(discord.Client):
 
         if command[0] == "set_channel":
             await set_channel(message, self.temporary_settings)
+            print("DEBUG: set_channel を呼び出しました")
         elif message.author.id in self.temporary_settings:
+            # 現在進行中の設定がある場合
             await handle_channel_setup(message, self.temporary_settings)
+            print("DEBUG: handle_channel_setup を呼び出しました")
         elif command[0] == "question":
             await handle_question_navigation(command, message, self)
         elif command[0] == "list_votes":
