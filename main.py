@@ -2,13 +2,18 @@ import discord
 import os
 from datetime import datetime
 from database import initialize_database, load_settings
-from settings import set_channel
+from settings import set_channel, handle_channel_setup
 from vote import handle_question_navigation, list_votes, delete_vote
 from team import split_into_teams
 from keep import keep_alive
 from scheduler import initialize_scheduler
 
+
 class MyClient(discord.Client):
+    def __init__(self, intents):
+        super().__init__(intents=intents)
+        self.temporary_settings = {}  # ユーザーごとの設定進行状況を管理
+
     async def on_ready(self):
         print('Startup Success!!!')
         initialize_scheduler()
@@ -24,7 +29,9 @@ class MyClient(discord.Client):
         command = message.content[1:].strip().split(" ")
 
         if command[0] == "set_channel":
-            await set_channel(command, message)
+            await set_channel(message, self.temporary_settings)
+        elif message.author.id in self.temporary_settings:
+            await handle_channel_setup(message, self.temporary_settings)
         elif command[0] == "question":
             await handle_question_navigation(command, message, self)
         elif command[0] == "list_votes":
@@ -103,6 +110,7 @@ class MyClient(discord.Client):
                 await botRoom.send(f"**{before.channel.name}** から、__{member.name}__ が抜けました！")
             elif not before.channel and after.channel:
                 await botRoom.send(f"**{after.channel.name}** に、__{member.name}__ が参加しました！")
+
 
 intents = discord.Intents.default()
 intents.message_content = True
