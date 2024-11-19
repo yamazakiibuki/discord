@@ -4,7 +4,7 @@ import discord
 # グローバル辞書で一時的な設定情報を保持
 temporary_settings = {}
 
-async def set_channel(message):
+async def set_channel(message, temporary_settings):
     user_id = message.author.id
     guild_id = message.guild.id
 
