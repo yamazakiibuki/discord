@@ -1,4 +1,7 @@
+from database import save_settings, load_settings
 import discord
+
+temporary_settings = {}
 
 async def set_channel(message, temporary_settings):
     user_id = message.author.id
@@ -12,7 +15,7 @@ async def set_channel(message, temporary_settings):
     temporary_settings[user_id] = {"guild_id": guild_id, "step": 1}
     await message.channel.send(
         "設定を始めます。\n"
-        "まず、`BOT_ROOM` に設定するチャンネル名を入力してください。\n"
+        "まず、監視対象のボイスチャンネル名を入力してください。\n"
         "例: `general`"
     )
 
@@ -43,8 +46,8 @@ async def handle_channel_setup(message, temporary_settings):
         settings["bot_room_id"] = channel.id
         settings["step"] = 2
         await message.channel.send(
-            f"`BOT_ROOM` に `{channel_name}` を設定しました。\n"
-            "次に、`ANNOUNCE_CHANNEL` に設定するチャンネル名を入力してください。\n"
+            f"監視対象を `{channel_name}` を設定しました。\n"
+            "次に、報告対象に設定するテキストチャンネル名を入力してください。\n"
             "例: `announcements`"
         )
     elif step == 2:
@@ -63,12 +66,14 @@ async def handle_channel_setup(message, temporary_settings):
         try:
             # 設定を保存
             bot_room_id = settings["bot_room_id"]
-            save_settings(guild_id, bot_room_id, [channel.id])
+            announce_channels = []
+            announce_channels.append(channel.id)
+            save_settings(guild_id, bot_room_id, announce_channels)
 
             # 設定完了
             del temporary_settings[user_id]  # 一時データを削除
             await message.channel.send(
-                f"`ANNOUNCE_CHANNEL` に `{channel_name}` を設定しました！\n"
+                f"報告対象を設定しました！\n"
                 "設定が完了しました。"
             )
         except Exception as e:
