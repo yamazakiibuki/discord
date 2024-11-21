@@ -66,9 +66,9 @@ async def handle_channel_setup(message, temporary_settings):
         try:
             # 設定を保存
             bot_room_id = settings["bot_room_id"]
-            announce_channels = []
-            announce_channels.append(channel.id)
-            save_settings(guild_id, bot_room_id, announce_channels)
+            announce_channel_ids = []
+            announce_channel_ids.append(channel.id)
+            save_settings(guild_id, bot_room_id, announce_channel_ids)
 
             # 設定完了
             del temporary_settings[user_id]  # 一時データを削除
