@@ -112,7 +112,7 @@ class MyClient(discord.Client):
                 print(f"Settings not found for guild ID {member.guild.id}")
                 return
 
-            bot_room_id, announce_channel_ids = settings
+            bot_room_id, announce_channels = settings
             bot_room = self.get_channel(bot_room_id)
 
             if bot_room and before.channel != after.channel:
