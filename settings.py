@@ -63,8 +63,22 @@ async def handle_channel_setup(message, temporary_settings):
             print(f"DEBUG: チャンネル名 `{channel_name}` が見つからない")
             return
 
-        # チャンネル情報を保存
-        save_settings(guild_id, channel.id, channel_type)
-        del temporary_settings[user_id]  # 一時データを削除
-        await message.channel.send(f"チャンネル `{channel_name}` が `{channel_type}` に設定されました！")
-        print(f"DEBUG: {channel_name} を {channel_type} に設定")
+        try:
+            if channel_type == "BOT_ROOM":
+                # ボットルームの場合
+                save_settings(guild_id, channel.id, [])
+            elif channel_type == "ANNOUNCE_CHANNEL":
+                # アナウンスチャンネルの場合
+                bot_room_id, announce_channels = load_settings(guild_id)
+                if announce_channels is None:
+                    announce_channels = []
+                announce_channels.append(channel.id)
+                save_settings(guild_id, bot_room_id, announce_channels)
+
+            # 設定完了
+            del temporary_settings[user_id]  # 一時データを削除
+            await message.channel.send(f"チャンネル `{channel_name}` が `{channel_type}` に設定されました！")
+            print(f"DEBUG: {channel_name} を {channel_type} に設定")
+        except Exception as e:
+            await message.channel.send("設定を保存中にエラーが発生しました。詳細は管理者に問い合わせてください。")
+            print(f"DEBUG: 設定保存エラー - {e}")
