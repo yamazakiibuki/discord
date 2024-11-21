@@ -1,7 +1,7 @@
 import discord
 import os
 from datetime import datetime
-from database import initialize_database
+from database import initialize_database, load_settings
 from settings import set_channel, handle_channel_setup
 from vote import handle_question_navigation, list_votes, delete_vote
 from team import split_into_teams
@@ -100,19 +100,23 @@ class MyClient(discord.Client):
             print(f"Could not send message to {member.name}: {e}")
 
     async def on_voice_state_update(self, member, before, after):
-        settings = load_settings(member.guild.id)
-        if not settings:
-            print(f"Settings not found for guild ID {member.guild.id}")
-            return
+        try:
+            # 設定を取得
+            settings = load_settings(member.guild.id)
+            if settings is None:
+                print(f"Settings not found for guild ID {member.guild.id}")
+                return
 
-        botRoomID = settings[0]
-        botRoom = self.get_channel(botRoomID)
+            bot_room_id, announce_channel_ids = settings
+            bot_room = self.get_channel(bot_room_id)
 
-        if botRoom and before.channel != after.channel:
-            if before.channel and not after.channel:
-                await botRoom.send(f"**{before.channel.name}** から、__{member.name}__ が抜けました！")
-            elif not before.channel and after.channel:
-                await botRoom.send(f"**{after.channel.name}** に、__{member.name}__ が参加しました！")
+            if bot_room and before.channel != after.channel:
+                if before.channel and not after.channel:
+                    await bot_room.send(f"**{before.channel.name}** から、__{member.name}__ が抜けました！")
+                elif not before.channel and after.channel:
+                    await bot_room.send(f"**{after.channel.name}** に、__{member.name}__ が参加しました！")
+        except Exception as e:
+            print(f"Error in on_voice_state_update: {e}")
 
 
 intents = discord.Intents.default()
