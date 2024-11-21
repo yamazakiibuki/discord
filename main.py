@@ -23,6 +23,11 @@ class MyClient(discord.Client):
         if message.author.bot:
             return
 
+        if message.author.id in self.temporary_settings:
+    # 設定進行中ならコマンド形式を問わず処理
+            await handle_channel_setup(message, self.temporary_settings)
+            return
+        
         if not message.content.startswith("!"):
             return
 
