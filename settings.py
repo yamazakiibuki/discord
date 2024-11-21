@@ -1,3 +1,5 @@
+import discord
+
 async def set_channel(message, temporary_settings):
     user_id = message.author.id
     guild_id = message.guild.id
