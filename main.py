@@ -104,26 +104,26 @@ class MyClient(discord.Client):
         except Exception as e:
             print(f"Could not send message to {member.name}: {e}")
 
-async def on_voice_state_update(self, member, before, after):
-    try:
-        settings = load_settings(member.guild.id)
-        if not settings:
-            print(f"Settings not found for guild ID {member.guild.id}")
-            return
-
-        bot_room_id, announce_channel_ids = settings
-        if before.channel and before.channel.id == bot_room_id and not after.channel:
-            for channel_id in announce_channel_ids:
-                announce_channel = self.get_channel(channel_id)
-                if announce_channel:
-                    await announce_channel.send(f"**{before.channel.name}** から、__{member.name}__ が抜けました！")
-        elif after.channel and after.channel.id == bot_room_id and not before.channel:
-            for channel_id in announce_channel_ids:
-                announce_channel = self.get_channel(channel_id)
-                if announce_channel:
-                    await announce_channel.send(f"**{after.channel.name}** に、__{member.name}__ が参加しました！")
-    except Exception as e:
-        print(f"Error in on_voice_state_update: {e}")
+    async def on_voice_state_update(self, member, before, after):
+        try:
+            settings = load_settings(member.guild.id)
+            if not settings:
+                print(f"Settings not found for guild ID {member.guild.id}")
+                return
+    
+            bot_room_id, announce_channel_ids = settings
+            if before.channel and before.channel.id == bot_room_id and not after.channel:
+                for channel_id in announce_channel_ids:
+                    announce_channel = self.get_channel(channel_id)
+                    if announce_channel:
+                        await announce_channel.send(f"**{before.channel.name}** から、__{member.name}__ が抜けました！")
+            elif after.channel and after.channel.id == bot_room_id and not before.channel:
+                for channel_id in announce_channel_ids:
+                    announce_channel = self.get_channel(channel_id)
+                    if announce_channel:
+                        await announce_channel.send(f"**{after.channel.name}** に、__{member.name}__ が参加しました！")
+        except Exception as e:
+            print(f"Error in on_voice_state_update: {e}")
 
 
 intents = discord.Intents.default()
