@@ -55,8 +55,11 @@ def load_settings(guild_id):
     row = c.fetchone()
     conn.close()
     if row:
-        return row[0], json.loads(row[1]) if row[1] else []
+        # announce_channel_ids が文字列型の場合のみ JSON デコードを実行
+        announce_channel_ids = json.loads(row[1]) if isinstance(row[1], str) else row[1]
+        return row[0], announce_channel_ids
     return None, []
+
 
 def save_vote(question, options, expiration):
     conn = get_connection()
