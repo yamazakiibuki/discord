@@ -19,7 +19,6 @@ def initialize_database():
             announce_channel_ids JSON
         )
     ''')
-    
     # 投票テーブルの作成
     c.execute('''
         CREATE TABLE IF NOT EXISTS votes (
@@ -32,34 +31,21 @@ def initialize_database():
             FOREIGN KEY (guild_id) REFERENCES settings (guild_id)
         )
     ''')
-    
     conn.commit()
     conn.close()
 
-def save_settings(guild_id, bot_room_id, announce_channel_ids):
+def ensure_guild_settings(guild_id):
+    """guild_id が settings テーブルに存在しない場合、デフォルト値を挿入"""
     conn = get_connection()
     c = conn.cursor()
-    c.execute('''
-        INSERT INTO settings (guild_id, bot_room_id, announce_channel_ids)
-        VALUES (%s, %s, %s)
-        ON CONFLICT (guild_id) DO UPDATE 
-        SET bot_room_id = EXCLUDED.bot_room_id, announce_channel_ids = EXCLUDED.announce_channel_ids
-    ''', (guild_id, bot_room_id, json.dumps(announce_channel_ids)))
-    conn.commit()
+    c.execute('SELECT guild_id FROM settings WHERE guild_id = %s', (guild_id,))
+    if not c.fetchone():
+        c.execute('''
+            INSERT INTO settings (guild_id, bot_room_id, announce_channel_ids)
+            VALUES (%s, %s, %s)
+        ''', (guild_id, None, json.dumps([])))
+        conn.commit()
     conn.close()
-
-def load_settings(guild_id):
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute('SELECT bot_room_id, announce_channel_ids FROM settings WHERE guild_id = %s', (guild_id,))
-    row = c.fetchone()
-    conn.close()
-    if row:
-        # announce_channel_ids が文字列型の場合のみ JSON デコードを実行
-        announce_channel_ids = json.loads(row[1]) if isinstance(row[1], str) else row[1]
-        return row[0], announce_channel_ids
-    return None, []
-
 
 def save_vote(question, options, expiration):
     conn = get_connection()
