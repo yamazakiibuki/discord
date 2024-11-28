@@ -1,81 +1,121 @@
-from database import save_settings, load_settings
-import discord
+import psycopg2
+import json
+from datetime import datetime
 
-temporary_settings = {}
+DATABASE_URL = "postgres://koyeb-adm:TJQV65jSfXBK@ep-curly-mode-a2v5q610.eu-central-1.pg.koyeb.app/koyebdb"
 
-async def set_channel(message, temporary_settings):
-    user_id = message.author.id
-    guild_id = message.guild.id
+def get_connection():
+    """PostgreSQL接続を取得"""
+    return psycopg2.connect(DATABASE_URL, sslmode="require")
 
-    if user_id in temporary_settings:
-        await message.channel.send("現在進行中の設定があります。終了するにはもう一度コマンドを入力してください。")
-        return
-
-    # 一時的にユーザー情報を保存
-    temporary_settings[user_id] = {"guild_id": guild_id, "step": 1}
-    await message.channel.send(
-        "設定を始めます。\n"
-        "まず、監視対象のボイスチャンネル名を入力してください。\n"
-        "例: `general`"
-    )
-
-async def handle_channel_setup(message, temporary_settings):
-    user_id = message.author.id
-
-    if user_id not in temporary_settings:
-        await message.channel.send("最初に `!set_channel` を実行してください。")
-        return
-
-    settings = temporary_settings[user_id]
-    step = settings["step"]
-
-    if step == 1:
-        # BOT_ROOMの設定
-        channel_name = message.content.strip()
-        guild_id = settings["guild_id"]
-        channel = discord.utils.get(message.guild.channels, name=channel_name)
-
-        if not channel:
-            await message.channel.send(
-                f"指定されたチャンネル名 `{channel_name}` が見つかりません。\n"
-                "正しいチャンネル名を入力してください。"
-            )
-            return
-
-        # BOT_ROOMを保存し、次のステップへ進む
-        settings["bot_room_id"] = channel.id
-        settings["step"] = 2
-        await message.channel.send(
-            f"監視対象を `{channel_name}` を設定しました。\n"
-            "次に、報告対象に設定するテキストチャンネル名を入力してください。\n"
-            "例: `announcements`"
+def initialize_database():
+    """データベースの初期化"""
+    conn = get_connection()
+    c = conn.cursor()
+    # 設定テーブルの作成
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS settings (
+            guild_id BIGINT PRIMARY KEY,
+            bot_room_id BIGINT,
+            announce_channel_ids JSON
         )
-    elif step == 2:
-        # ANNOUNCE_CHANNELの設定
-        channel_name = message.content.strip()
-        guild_id = settings["guild_id"]
-        channel = discord.utils.get(message.guild.channels, name=channel_name)
+    ''')
+    
+    # 投票テーブルの作成
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS votes (
+            id SERIAL PRIMARY KEY,
+            guild_id BIGINT,
+            question TEXT,
+            options JSON,
+            expiration TIMESTAMP,
+            results JSON,
+            FOREIGN KEY (guild_id) REFERENCES settings (guild_id) ON DELETE CASCADE
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
 
-        if not channel:
-            await message.channel.send(
-                f"指定されたチャンネル名 `{channel_name}` が見つかりません。\n"
-                "正しいチャンネル名を入力してください。"
-            )
-            return
+def save_settings(guild_id, bot_room_id, announce_channel_ids):
+    """設定情報を保存"""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('''
+        INSERT INTO settings (guild_id, bot_room_id, announce_channel_ids)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (guild_id) DO UPDATE 
+        SET bot_room_id = EXCLUDED.bot_room_id, announce_channel_ids = EXCLUDED.announce_channel_ids
+    ''', (guild_id, bot_room_id, json.dumps(announce_channel_ids)))
+    conn.commit()
+    conn.close()
 
-        try:
-            # 設定を保存
-            bot_room_id = settings["bot_room_id"]
-            announce_channel_ids = []
-            announce_channel_ids.append(channel.id)
-            save_settings(guild_id, bot_room_id, announce_channel_ids)
+def load_settings(guild_id):
+    """指定されたギルドIDの設定をロード"""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('SELECT bot_room_id, announce_channel_ids FROM settings WHERE guild_id = %s', (guild_id,))
+    row = c.fetchone()
+    conn.close()
+    if row:
+        # announce_channel_ids が文字列型の場合のみ JSON デコードを実行
+        announce_channel_ids = json.loads(row[1]) if isinstance(row[1], str) else row[1]
+        return {
+            'bot_room_id': row[0],
+            'announce_channel_ids': announce_channel_ids
+        }
+    return None
 
-            # 設定完了
-            del temporary_settings[user_id]  # 一時データを削除
-            await message.channel.send(
-                f"報告対象を設定しました！\n"
-                "設定が完了しました。"
-            )
-        except Exception as e:
-            await message.channel.send("設定を保存中にエラーが発生しました。詳細は管理者に問い合わせてください。")
-            print(f"DEBUG: 設定保存エラー - {e}")
+def save_vote(guild_id, question, options, expiration):
+    """投票を保存"""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('''
+        INSERT INTO votes (guild_id, question, options, expiration, results)
+        VALUES (%s, %s, %s, %s, %s)
+    ''', (guild_id, question, json.dumps(options), expiration, json.dumps({})))
+    conn.commit()
+    conn.close()
+
+def get_votes(guild_id=None):
+    """投票を取得"""
+    conn = get_connection()
+    c = conn.cursor()
+    if guild_id:
+        c.execute('SELECT id, question, options, expiration, results FROM votes WHERE guild_id = %s', (guild_id,))
+    else:
+        c.execute('SELECT id, question, options, expiration, results FROM votes')
+    votes = []
+    for row in c.fetchall():
+        votes.append({
+            'id': row[0],
+            'question': row[1],
+            'options': json.loads(row[2]),
+            'expiration': row[3],
+            'results': json.loads(row[4]) if row[4] else {}
+        })
+    conn.close()
+    return votes
+
+def delete_vote_entry(vote_id):
+    """投票を削除"""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('DELETE FROM votes WHERE id = %s', (vote_id,))
+    conn.commit()
+    rowcount = c.rowcount
+    conn.close()
+    return rowcount > 0
+
+def ensure_guild_settings(guild_id):
+    """guild_id が設定テーブルに存在しない場合はデフォルト値を挿入"""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('SELECT guild_id FROM settings WHERE guild_id = %s', (guild_id,))
+    if not c.fetchone():
+        c.execute('''
+            INSERT INTO settings (guild_id, bot_room_id, announce_channel_ids)
+            VALUES (%s, NULL, %s)
+        ''', (guild_id, json.dumps([])))
+        conn.commit()
+    conn.close()
