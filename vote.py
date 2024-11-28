@@ -1,6 +1,7 @@
 import discord
 from datetime import datetime
-from database import save_vote, get_votes, delete_vote_entry
+import asyncio
+from database import save_vote, get_votes, delete_vote_entry, ensure_guild_settings
 
 async def handle_question_navigation(command, message, client):
     if len(command) < 3:
@@ -34,11 +35,12 @@ async def create_vote_question_step_by_step(message, client):
         return m.author == message.author and m.channel == message.channel
 
     try:
-        question_msg = await message.channel.send("質問を入力してください。")
-        question_response = await client.wait_for('message', check=check, timeout=60.0)
-        question = question_response.content
+        # 投票の質問を取得
+        question_msg = await client.wait_for('message', check=check, timeout=60.0)
+        question = question_msg.content
 
-        await message.channel.send("選択肢をカンマで区切って入力してください（例: はい,いいえ,たぶん）。最大10個まで指定できます。")
+        # 投票の選択肢を取得
+        await message.channel.send("選択肢をカンマ区切りで入力してください（例: はい,いいえ,たぶん）。最大10個まで指定可能です。")
         options_msg = await client.wait_for('message', check=check, timeout=60.0)
         options = [opt.strip() for opt in options_msg.content.split(',')]
 
@@ -46,7 +48,7 @@ async def create_vote_question_step_by_step(message, client):
             await message.channel.send("選択肢は最大10個までです。")
             return
 
-        # ステップ 3: 有効期限の入力（任意）
+        # 有効期限の取得
         await message.channel.send("投票の有効期限を指定してください（例: 2024-12-25 15:00）。スキップする場合は「スキップ」と入力してください。")
         expiration_msg = await client.wait_for('message', check=check, timeout=60.0)
         expiration = expiration_msg.content
@@ -60,23 +62,25 @@ async def create_vote_question_step_by_step(message, client):
         else:
             expiration = None
 
-        # 投票の保存
+        # 必要な設定データを確認・挿入
+        ensure_guild_settings(guild_id=1)
+
+        # 投票を保存
         save_vote(question, options, expiration.strftime('%Y-%m-%d %H:%M') if expiration else None)
 
-        # 投票を表示
+        # 投票の表示
         embed = discord.Embed(title=question, color=discord.Colour.green())
         for i, option in enumerate(options):
             embed.description = (embed.description or '') + f"{i + 1}. {option}\n"
         voting_msg = await message.channel.send(embed=embed)
 
-        # リアクションを追加
         for i in range(len(options)):
-            await voting_msg.add_reaction(str(i + 1) + '️⃣')
+            await voting_msg.add_reaction(f"{i + 1}\N{COMBINING ENCLOSING KEYCAP}")
 
-        await message.channel.send("投票が作成されました。リアクションを使って投票を行ってください！")
+        await message.channel.send("投票が作成されました。リアクションを使って投票してください！")
 
-    except discord.TimeoutError:
-        await message.channel.send("タイムアウトしました。もう一度最初からやり直してください。")
+    except asyncio.TimeoutError:
+        await message.channel.send("タイムアウトしました。最初からやり直してください。")
 
 async def list_votes(message):
     votes = get_votes()
