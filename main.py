@@ -24,7 +24,7 @@ class MyClient(discord.Client):
             return
 
         if message.author.id in self.temporary_settings:
-    # 設定進行中ならコマンド形式を問わず処理
+            # 設定進行中ならコマンド形式を問わず処理
             await handle_channel_setup(message, self.temporary_settings)
             return
         
@@ -106,16 +106,20 @@ class MyClient(discord.Client):
 
     async def on_voice_state_update(self, member, before, after):
         try:
-            # 設定を取得
+            print(f"DEBUG: Guild ID = {member.guild.id}")
             settings = load_settings(member.guild.id)
+            print(f"DEBUG: Loaded settings = {settings}")
+
             if settings is None:
                 print(f"Settings not found for guild ID {member.guild.id}")
                 return
 
             bot_room_id, announce_channel_ids = settings
             bot_room = self.get_channel(bot_room_id)
+            print(f"DEBUG: Bot Room = {bot_room}")
 
             if bot_room and before.channel != after.channel:
+                print(f"DEBUG: Before = {before.channel}, After = {after.channel}")
                 if before.channel and not after.channel:
                     await bot_room.send(f"**{before.channel.name}** から、__{member.name}__ が抜けました！")
                 elif not before.channel and after.channel:
