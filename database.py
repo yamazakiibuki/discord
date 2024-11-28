@@ -47,6 +47,20 @@ def ensure_guild_settings(guild_id):
         conn.commit()
     conn.close()
 
+def load_settings(guild_id):
+    """指定されたギルドIDの設定を取得"""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('SELECT bot_room_id, announce_channel_ids FROM settings WHERE guild_id = %s', (guild_id,))
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return {
+            'bot_room_id': row[0],
+            'announce_channel_ids': json.loads(row[1]) if row[1] else []
+        }
+    return None
+
 def save_vote(question, options, expiration):
     conn = get_connection()
     c = conn.cursor()
