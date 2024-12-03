@@ -98,9 +98,18 @@ async def list_votes(message):
 
     embed = discord.Embed(title="投票一覧", color=discord.Colour.gold())
     for vote in votes:
-        expiration_date = datetime.strptime(vote['expiration'], '%Y-%m-%d %H:%M') if vote['expiration'] else "なし"
+        # expiration が datetime か文字列かで処理を分ける
+        if isinstance(vote['expiration'], str):
+            expiration_date = datetime.strptime(vote['expiration'], '%Y-%m-%d %H:%M')
+        else:
+            expiration_date = vote['expiration']
+
         result = vote['results'] if vote['results'] else '未定'
-        embed.add_field(name=vote['question'], value=f"結果: {result}\n有効期限: {expiration_date}", inline=False)
+        embed.add_field(
+            name=vote['question'], 
+            value=f"結果: {result}\n有効期限: {expiration_date.strftime('%Y-%m-%d %H:%M') if expiration_date else 'なし'}",
+            inline=False
+        )
     await message.channel.send(embed=embed)
 
 async def delete_vote(command, message):
