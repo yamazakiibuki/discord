@@ -5,8 +5,6 @@ async def handle_question_navigation(command, message, client):
     if len(command) < 2:
         await message.channel.send(
             "コマンドが不完全です。利用可能なコマンド:\n"
-            "- `!question yes-no 質問内容`\n"
-            "- `!question vote`"
         )
         return
 
