@@ -24,7 +24,6 @@ class MyClient(discord.Client):
             return
 
         if message.author.id in self.temporary_settings:
-            # 設定進行中ならコマンド形式を問わず処理
             await handle_channel_setup(message, self.temporary_settings)
             return
         
@@ -36,10 +35,6 @@ class MyClient(discord.Client):
         if command[0] == "set_channel":
             await set_channel(message, self.temporary_settings)
             print("DEBUG: set_channel を呼び出しました")
-        elif message.author.id in self.temporary_settings:
-            # 現在進行中の設定がある場合
-            await handle_channel_setup(message, self.temporary_settings)
-            print("DEBUG: handle_channel_setup を呼び出しました")
         elif command[0] == "question":
             await handle_question_navigation(command, message, self)
         elif command[0] == "list_votes":
@@ -111,7 +106,10 @@ class MyClient(discord.Client):
                 print(f"Settings not found for guild ID {member.guild.id}")
                 return
     
-            bot_room_id, announce_channel_ids = settings
+            bot_room_id = settings['bot_room_id']
+            announce_channel_ids = settings['announce_channel_ids']
+            print(f"DEBUG: bot_room_id={bot_room_id}, announce_channel_ids={announce_channel_ids}")
+
             if before.channel and before.channel.id == bot_room_id and not after.channel:
                 for channel_id in announce_channel_ids:
                     announce_channel = self.get_channel(channel_id)
@@ -124,6 +122,7 @@ class MyClient(discord.Client):
                         await announce_channel.send(f"**{after.channel.name}** に、__{member.name}__ が参加しました！")
         except Exception as e:
             print(f"Error in on_voice_state_update: {e}")
+            raise
 
 
 intents = discord.Intents.default()
