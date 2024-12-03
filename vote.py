@@ -1,11 +1,13 @@
 import discord
-from datetime import datetime
-import asyncio
-from database import save_vote, get_votes, delete_vote_entry, ensure_guild_settings
+from database import save_vote, ensure_guild_settings
 
 async def handle_question_navigation(command, message, client):
     if len(command) < 2:
-        await message.channel.send("コマンドが不完全です。利用可能なコマンド:\n- `!question yes-no 質問内容`\n- `!question vote`\n- `!question list`\n- `!question delete 投票ID`")
+        await message.channel.send(
+            "コマンドが不完全です。利用可能なコマンド:\n"
+            "- `!question yes-no 質問内容`\n"
+            "- `!question vote`"
+        )
         return
 
     question_type = command[1]
@@ -17,15 +19,8 @@ async def handle_question_navigation(command, message, client):
         await create_yes_no_question(command, message)
     elif question_type == "vote":
         await create_vote_question_step_by_step(message, client)
-    elif question_type == "list":
-        await list_votes(message)
-    elif question_type == "delete":
-        if len(command) < 3:
-            await message.channel.send("削除する投票のIDを指定してください。例: `!question delete 1`")
-            return
-        await delete_vote(command, message)
     else:
-        await message.channel.send("無効な質問タイプです。利用可能なコマンドは `yes-no`, `vote`, `list`, `delete` です。")
+        await message.channel.send("無効な質問タイプです。利用可能なコマンドは `yes-no` と `vote` です。")
 
 async def create_yes_no_question(command, message):
     question = command[2]
@@ -56,25 +51,11 @@ async def create_vote_question_step_by_step(message, client):
             await message.channel.send("選択肢は最大10個までです。")
             return
 
-        # 有効期限の設定
-        await message.channel.send("投票の有効期限を入力してください（例: 2024-12-25 15:00）。スキップする場合はそのままEnterを押してください。")
-        expiration_msg = await client.wait_for('message', check=check, timeout=60.0)
-        expiration = expiration_msg.content
-
-        if expiration:
-            try:
-                expiration = datetime.strptime(expiration, '%Y-%m-%d %H:%M')
-            except ValueError:
-                await message.channel.send("日付と時刻の形式が正しくありません。例: 2024-12-25 15:00")
-                return
-        else:
-            expiration = None
-
         # 必要な設定データの確認・挿入
         ensure_guild_settings(message.guild.id)
 
         # 投票を保存
-        save_vote(message.guild.id, question, options, expiration)
+        save_vote(message.guild.id, question, options, None)
 
         # 投票の表示
         embed = discord.Embed(title=question, color=discord.Colour.green())
@@ -89,43 +70,3 @@ async def create_vote_question_step_by_step(message, client):
 
     except asyncio.TimeoutError:
         await message.channel.send("タイムアウトしました。最初からやり直してください。")
-
-async def list_votes(message):
-    votes = get_votes(message.guild.id)
-    if not votes:
-        await message.channel.send("現在の投票はありません。")
-        return
-
-    embed = discord.Embed(title="投票一覧", color=discord.Colour.gold())
-    for vote in votes:
-        # expiration が datetime か文字列かで処理を分ける
-        if isinstance(vote['expiration'], str):
-            expiration_date = datetime.strptime(vote['expiration'], '%Y-%m-%d %H:%M')
-        else:
-            expiration_date = vote['expiration']
-
-        result = vote['results'] if vote['results'] else '未定'
-        embed.add_field(
-            name=vote['question'], 
-            value=f"結果: {result}\n有効期限: {expiration_date.strftime('%Y-%m-%d %H:%M') if expiration_date else 'なし'}",
-            inline=False
-        )
-    await message.channel.send(embed=embed)
-
-async def delete_vote(command, message):
-    if len(command) < 3:
-        await message.channel.send("削除する投票のIDを指定してください。例: `!question delete 1`")
-        return
-
-    try:
-        vote_id = int(command[2])
-    except ValueError:
-        await message.channel.send("投票IDは数字で指定してください。例: `!question delete 1`")
-        return
-
-    success = delete_vote_entry(vote_id)
-    if success:
-        await message.channel.send(f"投票 ID {vote_id} を削除しました。")
-    else:
-        await message.channel.send(f"指定された投票 ID {vote_id} は見つかりませんでした。")
-
