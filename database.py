@@ -90,12 +90,13 @@ def get_votes(guild_id=None):
         votes.append({
             'id': row[0],
             'question': row[1],
-            'options': json.loads(row[2]),
+            'options': row[2] if isinstance(row[2], list) else json.loads(row[2]),
             'expiration': row[3],
             'results': json.loads(row[4]) if row[4] else {}
         })
     conn.close()
     return votes
+
 
 def delete_vote_entry(vote_id):
     """投票を削除"""
