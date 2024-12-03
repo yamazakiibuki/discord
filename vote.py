@@ -113,9 +113,19 @@ async def list_votes(message):
     await message.channel.send(embed=embed)
 
 async def delete_vote(command, message):
-    vote_id = int(command[2])
+    if len(command) < 3:
+        await message.channel.send("削除する投票のIDを指定してください。例: `!question delete 1`")
+        return
+
+    try:
+        vote_id = int(command[2])
+    except ValueError:
+        await message.channel.send("投票IDは数字で指定してください。例: `!question delete 1`")
+        return
+
     success = delete_vote_entry(vote_id)
     if success:
         await message.channel.send(f"投票 ID {vote_id} を削除しました。")
     else:
-        await message.channel.send("指定された投票は見つかりません。")
+        await message.channel.send(f"指定された投票 ID {vote_id} は見つかりませんでした。")
+
