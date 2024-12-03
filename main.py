@@ -37,10 +37,6 @@ class MyClient(discord.Client):
             print("DEBUG: set_channel を呼び出しました")
         elif command[0] == "question":
             await handle_question_navigation(command, message, self)
-        elif command[0] == "list_votes":
-            await list_votes(message)
-        elif command[0] == "delete_vote":
-            await delete_vote(command, message)
         elif command[0] == "team":
             await self.handle_team_command(command, message)
         elif command[0] == "set_schedule":
