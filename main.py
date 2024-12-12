@@ -7,7 +7,7 @@ from vote import handle_question_navigation
 from team import split_into_teams
 from keep import keep_alive
 from scheduler import initialize_scheduler
-
+from search import yahoo_news_search  # search.py からインポート
 
 class MyClient(discord.Client):
     def __init__(self, intents):
@@ -26,7 +26,7 @@ class MyClient(discord.Client):
         if message.author.id in self.temporary_settings:
             await handle_channel_setup(message, self.temporary_settings)
             return
-        
+
         if not message.content.startswith("!"):
             return
 
@@ -40,6 +40,12 @@ class MyClient(discord.Client):
             await self.handle_team_command(command, message)
         elif command[0] == "set_schedule":
             await self.start_schedule_navigation(message)
+        elif command[0] == "search":  # 新しい search コマンド
+            if len(command) > 1:
+                query = " ".join(command[1:])
+                await yahoo_news_search(message.channel, query)
+            else:
+                await message.channel.send("検索クエリを入力してください。例: `!search PS5`")
         else:
             await message.channel.send("無効なコマンドです。")
 
