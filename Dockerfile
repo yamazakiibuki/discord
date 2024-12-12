@@ -6,31 +6,21 @@ WORKDIR /bot
 
 # 更新・日本語化
 RUN apt-get update && apt-get -y install locales && apt-get -y upgrade && \
-    localedef -f UTF-8 -i ja_JP ja_JP.UTF-8
+    localedef -f UTF-8 -i ja_JP ja_JP.UTF-8 && \
+    apt-get -y install wget unzip curl software-properties-common && \
+    apt-get -y install libnss3 libgconf-2-4 libxi6 libxrandr2 libxcomposite1 libasound2 libxdamage1 libxtst6 fonts-liberation libappindicator3-1 xdg-utils libu2f-udev && \
+    apt-get -y install chromium chromium-driver
+
+# 環境変数の設定
 ENV LANG ja_JP.UTF-8
 ENV LANGUAGE ja_JP:ja
 ENV LC_ALL ja_JP.UTF-8
 ENV TZ Asia/Tokyo
 ENV TERM xterm
 
-# 必要な依存関係（ChromeとChromeDriver）をインストール
-RUN apt-get update && apt-get install -y wget unzip libxss1 libappindicator1 libindicator7 fonts-liberation libnss3 lsb-release ca-certificates gnupg && \
-    # Google Chrome のインストール
-    wget -qO- https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor > /usr/share/keyrings/google-chrome.gpg && \
-    echo "deb [signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
-    apt-get update && apt-get install -y google-chrome-stable && \
-    # ChromeDriver のインストール
-    CHROME_DRIVER_VERSION=$(wget -qO- https://chromedriver.storage.googleapis.com/LATEST_RELEASE) && \
-    wget https://chromedriver.storage.googleapis.com/${CHROME_DRIVER_VERSION}/chromedriver_linux64.zip && \
-    unzip chromedriver_linux64.zip -d /usr/local/bin/ && \
-    rm chromedriver_linux64.zip
-
-# ChromeDriverに実行権限を付与
-RUN chmod +x /usr/local/bin/chromedriver
-
 # pip install
 COPY requirements.txt /bot/
-RUN pip install -r requirements.txt
+RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # アプリケーションコードをコピー
 COPY . /bot
