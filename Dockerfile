@@ -14,11 +14,11 @@ ENV TZ Asia/Tokyo
 ENV TERM xterm
 
 # 必要な依存関係（ChromeとChromeDriver）をインストール
-RUN apt-get install -y wget unzip \
+RUN apt-get install -y wget unzip libxss1 libappindicator1 libindicator7 fonts-liberation libnss3 lsb-release \
     && wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
     && dpkg -i google-chrome-stable_current_amd64.deb || apt-get install -f -y \
     && rm google-chrome-stable_current_amd64.deb \
-    && wget https://chromedriver.storage.googleapis.com/131.0.6778.108/chromedriver_linux64.zip \
+    && wget https://chromedriver.storage.googleapis.com/$(wget -qO- https://chromedriver.storage.googleapis.com/LATEST_RELEASE)/chromedriver_linux64.zip \
     && unzip chromedriver_linux64.zip -d /usr/local/bin/ \
     && rm chromedriver_linux64.zip
 
