@@ -9,7 +9,8 @@ async def yahoo_news_search(ctx, query):
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    service = Service(executable_path="./bin/chromedriver.exe")
+    chrome_options.add_argument("--disable-gpu")
+    service = Service(executable_path="/usr/bin/chromedriver")  # Linux用のドライバパス
 
     driver = None
     try:
@@ -35,7 +36,9 @@ async def yahoo_news_search(ctx, query):
         await ctx.send(message)
 
     except Exception as e:
-        await ctx.send(f"エラーが発生しました: {str(e)}")
+        import traceback
+        error_details = traceback.format_exc()
+        await ctx.send(f"エラーが発生しました:\n{str(e)}\n詳細: {error_details}")
     finally:
         if driver:
             driver.quit()
