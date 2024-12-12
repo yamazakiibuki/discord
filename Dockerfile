@@ -14,13 +14,16 @@ ENV TZ Asia/Tokyo
 ENV TERM xterm
 
 # 必要な依存関係（ChromeとChromeDriver）をインストール
-RUN apt-get install -y wget unzip libxss1 libappindicator1 libindicator7 fonts-liberation libnss3 lsb-release \
-    && wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
-    && dpkg -i google-chrome-stable_current_amd64.deb || apt-get install -f -y \
-    && rm google-chrome-stable_current_amd64.deb \
-    && wget https://chromedriver.storage.googleapis.com/$(wget -qO- https://chromedriver.storage.googleapis.com/LATEST_RELEASE)/chromedriver_linux64.zip \
-    && unzip chromedriver_linux64.zip -d /usr/local/bin/ \
-    && rm chromedriver_linux64.zip
+RUN apt-get update && apt-get install -y wget unzip libxss1 libappindicator1 libindicator7 fonts-liberation libnss3 lsb-release ca-certificates gnupg && \
+    # Google Chrome のインストール
+    wget -qO- https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor > /usr/share/keyrings/google-chrome.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
+    apt-get update && apt-get install -y google-chrome-stable && \
+    # ChromeDriver のインストール
+    CHROME_DRIVER_VERSION=$(wget -qO- https://chromedriver.storage.googleapis.com/LATEST_RELEASE) && \
+    wget https://chromedriver.storage.googleapis.com/${CHROME_DRIVER_VERSION}/chromedriver_linux64.zip && \
+    unzip chromedriver_linux64.zip -d /usr/local/bin/ && \
+    rm chromedriver_linux64.zip
 
 # ChromeDriverに実行権限を付与
 RUN chmod +x /usr/local/bin/chromedriver
