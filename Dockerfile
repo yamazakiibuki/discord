@@ -32,5 +32,8 @@ ENV PATH="/usr/bin:$PATH"
 # ポート開放 (FlaskやUvicornで指定したポート)
 EXPOSE 8080
 
+# ChromeDriverの動作確認スクリプトを追加 (任意)
+RUN echo 'chromedriver --version && chromium --version' > /bot/test_chromedriver.sh && chmod +x /bot/test_chromedriver.sh
+
 # 実行
 CMD ["python", "main.py"]
