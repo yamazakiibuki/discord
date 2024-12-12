@@ -6,21 +6,28 @@ WORKDIR /bot
 
 # 更新・日本語化
 RUN apt-get update && apt-get -y install locales && apt-get -y upgrade && \
-    localedef -f UTF-8 -i ja_JP ja_JP.UTF-8 && \
-    apt-get -y install wget unzip curl software-properties-common && \
-    apt-get -y install libnss3 libgconf-2-4 libxi6 libxrandr2 libxcomposite1 libasound2 libxdamage1 libxtst6 fonts-liberation libappindicator3-1 xdg-utils libu2f-udev && \
-    apt-get -y install chromium chromium-driver
-
-# 環境変数の設定
+    localedef -f UTF-8 -i ja_JP ja_JP.UTF-8
 ENV LANG ja_JP.UTF-8
 ENV LANGUAGE ja_JP:ja
 ENV LC_ALL ja_JP.UTF-8
 ENV TZ Asia/Tokyo
 ENV TERM xterm
 
+# 必要な依存関係（ChromeとChromeDriver）をインストール
+RUN apt-get install -y wget unzip \
+    && wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
+    && dpkg -i google-chrome-stable_current_amd64.deb || apt-get install -f -y \
+    && rm google-chrome-stable_current_amd64.deb \
+    && wget https://chromedriver.storage.googleapis.com/131.0.6778.108/chromedriver_linux64.zip \
+    && unzip chromedriver_linux64.zip -d /usr/local/bin/ \
+    && rm chromedriver_linux64.zip
+
+# ChromeDriverに実行権限を付与
+RUN chmod +x /usr/local/bin/chromedriver
+
 # pip install
 COPY requirements.txt /bot/
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN pip install -r requirements.txt
 
 # アプリケーションコードをコピー
 COPY . /bot
