@@ -9,7 +9,7 @@ async def yahoo_news_search(ctx, query):
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    service = Service(executable_path="./bin/chromedriver")
+    service = Service(executable_path="./bin/chromedriver.exe")
 
     driver = None
     try:
