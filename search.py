@@ -7,14 +7,20 @@ from selenium.webdriver.support import expected_conditions as EC
 
 async def search_yahoo_news(query):
     chrome_options = Options()
-    # Chromium の実行ファイルのパスを指定します（環境によっては '/usr/bin/chromium-browser' となる場合もあります）
+    # Chromiumの実行ファイルのパス（環境によっては '/usr/bin/chromium-browser' かもしれません）
     chrome_options.binary_location = "/usr/bin/chromium"
-    chrome_options.add_argument("--headless")
+    # 新しいヘッドレスモードを試す (Chromium v109以降では "--headless=new" を利用する場合も)
+    chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-
-    # Dockerfile でインストールした chromium-driver が /usr/bin/chromedriver にあるので、そのパスを指定
+    # ウィンドウサイズの指定で安定する場合もあります
+    chrome_options.add_argument("window-size=1920,1080")
+    # 追加の安定化オプション
+    chrome_options.add_argument("--disable-software-rasterizer")
+    chrome_options.add_argument("--disable-features=VizDisplayCompositor")
+    
+    # Dockerfileでインストールしたchromium-driverのパス
     service = Service(executable_path="/usr/bin/chromedriver")
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
