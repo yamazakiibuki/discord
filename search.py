@@ -1,3 +1,6 @@
+import asyncio
+import shutil
+import chromedriver_autoinstaller
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -6,22 +9,22 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 async def search_yahoo_news(query):
+    # 最新の ChromeDriver をインストール（バージョンの不一致回避）
+    chromedriver_autoinstaller.install()
+
+    # Chromium の実行ファイルのパスを自動取得
+    chromium_path = shutil.which("chromium") or "/usr/bin/chromium"
+
     chrome_options = Options()
-    # Chromiumの実行ファイルのパス（環境によっては '/usr/bin/chromium-browser' かもしれません）
-    chrome_options.binary_location = "/usr/bin/chromium"
-    # 新しいヘッドレスモードを試す (Chromium v109以降では "--headless=new" を利用する場合も)
+    chrome_options.binary_location = chromium_path
     chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    # ウィンドウサイズの指定で安定する場合もあります
     chrome_options.add_argument("window-size=1920,1080")
-    # 追加の安定化オプション
-    chrome_options.add_argument("--disable-software-rasterizer")
-    chrome_options.add_argument("--disable-features=VizDisplayCompositor")
-    
-    # Dockerfileでインストールしたchromium-driverのパス
-    service = Service(executable_path="/usr/bin/chromedriver")
+    chrome_options.add_argument("--remote-debugging-port=9222")  # 安定性向上
+
+    service = Service()  # chromedriver_autoinstaller により自動設定
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
     try:
@@ -50,3 +53,8 @@ async def search_yahoo_news(query):
         return f"エラーが発生しました: {str(e)}"
     finally:
         driver.quit()
+
+# デバッグ用実行
+if __name__ == "__main__":
+    query = "AI ニュース"
+    print(asyncio.run(search_yahoo_news(query)))
