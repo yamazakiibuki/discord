@@ -1,139 +1,58 @@
-import discord
 import os
-from datetime import datetime
-from database import initialize_database, load_settings
-from settings import set_channel, handle_channel_setup
-from vote import handle_question_navigation
-from team import split_into_teams
-from keep import keep_alive
-from scheduler import initialize_scheduler
-from search import search_yahoo_news  # Yahoo!ニュース検索機能をインポート
+import asyncio
+import shutil
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
-class MyClient(discord.Client):
-    def __init__(self, intents):
-        super().__init__(intents=intents)
-        self.temporary_settings = {}  # ユーザーごとの設定進行状況を管理
+def get_chromedriver_path():
+    return os.getenv("CHROMEDRIVER_PATH", "/usr/bin/chromedriver")
 
-    async def on_ready(self):
-        print('Startup Success!!!')
-        initialize_scheduler()
-        initialize_database()
+async def search_yahoo_news(query):
+    chromedriver_path = get_chromedriver_path()
+    if not os.path.exists(chromedriver_path):
+        return f"エラー: 指定された chromedriver が見つかりません ({chromedriver_path})"
 
-    async def on_message(self, message):
-        if message.author.bot:
-            return
+    # Google Chrome のパスを指定
+    chrome_binary_path = "/usr/bin/google-chrome"
 
-        if message.author.id in self.temporary_settings:
-            await handle_channel_setup(message, self.temporary_settings)
-            return
+    chrome_options = Options()
+    chrome_options.binary_location = chrome_binary_path  # ← Google Chrome を指定
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("window-size=1920,1080")
 
-        if not message.content.startswith("!"):
-            return
+    service = Service(executable_path=chromedriver_path)
+    driver = webdriver.Chrome(service=service, options=chrome_options)
 
-        command = message.content[1:].strip().split(" ", 1)
-        cmd = command[0]
-        args = command[1] if len(command) > 1 else ""
+    try:
+        search_url = f"https://news.yahoo.co.jp/search?p={query}"
+        driver.get(search_url)
 
-        if cmd == "set_channel":
-            await set_channel(message, self.temporary_settings)
-        elif cmd == "question":
-            await handle_question_navigation(command, message, self)
-        elif cmd == "team":
-            await self.handle_team_command(command, message)
-        elif cmd == "set_schedule":
-            await self.start_schedule_navigation(message)
-        elif cmd == "search":
-            if args:
-                result = await search_yahoo_news(args)
-                await message.channel.send(result)
-            else:
-                await message.channel.send("検索ワードを入力してください。")
-        else:
-            await message.channel.send("無効なコマンドです。")
+        articles = WebDriverWait(driver, 10).until(
+            EC.presence_of_all_elements_located((By.CSS_SELECTOR, 'li.sc-1u4589e-0.kKmBYF'))
+        )[:3]
 
-    async def handle_team_command(self, command, message):
-        if isinstance(message.author, discord.Member) and message.author.voice:
-            voice_channel = message.author.voice.channel
-            team_count = int(command[1]) if len(command) > 1 else 2
-            teams, response = await split_into_teams(voice_channel, team_count)
-            await message.channel.send(response)
-        else:
-            await message.channel.send("ボイスチャンネルに接続していません。")
+        if not articles:
+            return "該当する記事が見つかりませんでした。"
 
-    async def start_schedule_navigation(self, message):
-        await message.channel.send("スケジュール設定を始めます。最初に日付を入力してください（例: 2024-12-25）。")
+        message = f"**Yahoo!ニュース 検索結果**：{query}\n\n"
+        for i, article in enumerate(articles, 1):
+            try:
+                title = article.find_element(By.CSS_SELECTOR, 'div.sc-3ls169-0.sc-110wjhy-2.dHAJpi.dKognN').text
+                link = article.find_element(By.CSS_SELECTOR, 'a').get_attribute('href')
+                message += f"{i}. [{title}]({link})\n"
+            except Exception as e:
+                print(f"記事取得中にエラーが発生: {e}")
+                continue
 
-        def check(msg):
-            return msg.author == message.author and msg.channel == message.channel
-
-        try:
-            date_msg = await self.wait_for('message', check=check, timeout=60.0)
-            date_str = date_msg.content
-
-            await message.channel.send("次に時間を入力してください（例: 15:00）。")
-            time_msg = await self.wait_for('message', check=check, timeout=60.0)
-            time_str = time_msg.content
-
-            await message.channel.send("最後に内容を入力してください。")
-            content_msg = await self.wait_for('message', check=check, timeout=60.0)
-            content = content_msg.content
-
-            await self.set_schedule(message.channel, date_str, time_str, content)
-
-        except discord.TimeoutError:
-            await message.channel.send("タイムアウトしました。再度コマンドを実行してください。")
-
-    async def set_schedule(self, channel, date_str, time_str, content):
-        try:
-            schedule_time = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
-            if schedule_time < datetime.now():
-                await channel.send("指定された日時は過去です。未来の日時を指定してください。")
-                return
-        except ValueError:
-            await channel.send("日付や時刻の形式が正しくありません。例: 2024-12-25 15:00")
-            return
-
-        await channel.send(f"予定が設定されました！\n日時: {schedule_time}\n内容: {content}")
-
-    async def on_member_join(self, member):
-        try:
-            await member.send(f"ようこそ、{member.name}さん！サーバーへようこそ！私はゲームボットです。")
-            print(f"Sent welcome message to {member.name}")
-        except Exception as e:
-            print(f"Could not send message to {member.name}: {e}")
-
-    async def on_voice_state_update(self, member, before, after):
-        try:
-            settings = load_settings(member.guild.id)
-            if not settings:
-                print(f"Settings not found for guild ID {member.guild.id}")
-                return
-    
-            bot_room_id = settings['bot_room_id']
-            announce_channel_ids = settings['announce_channel_ids']
-
-            if before.channel and before.channel.id == bot_room_id and not after.channel:
-                for channel_id in announce_channel_ids:
-                    announce_channel = self.get_channel(channel_id)
-                    if announce_channel:
-                        await announce_channel.send(f"**{before.channel.name}** から、__{member.name}__ が抜けました！")
-            elif after.channel and after.channel.id == bot_room_id and not before.channel:
-                for channel_id in announce_channel_ids:
-                    announce_channel = self.get_channel(channel_id)
-                    if announce_channel:
-                        await announce_channel.send(f"**{after.channel.name}** に、__{member.name}__ が参加しました！")
-        except Exception as e:
-            print(f"Error in on_voice_state_update: {e}")
-
-intents = discord.Intents.default()
-intents.message_content = True
-intents.voice_states = True
-intents.members = True
-
-client = MyClient(intents=intents)
-keep_alive()
-
-if 'TOKEN' not in os.environ:
-    print("Error: Discord bot token not found in environment variables.")
-else:
-    client.run(os.environ['TOKEN'])
+        return message
+    except Exception as e:
+        return f"エラーが発生しました: {str(e)}"
+    finally:
+        driver.quit()
