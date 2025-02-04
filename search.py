@@ -14,7 +14,7 @@ async def search_yahoo_news(query):
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    service = Service(executable_path='.//chromedriver-win64//chromedriver.exe')  # カレントディレクトリを指定
+    service = Service(executable_path='.\\chromedriver-win64\\chromedriver.exe')  # カレントディレクトリを指定
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
     try:
