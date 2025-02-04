@@ -5,3 +5,4 @@ psycopg2
 selenium==4.11.2
 requests
 beautifulsoup4
+chromedriver-autoinstaller
