@@ -7,6 +7,7 @@ from vote import handle_question_navigation
 from team import split_into_teams
 from keep import keep_alive
 from scheduler import initialize_scheduler
+from search import search_yahoo_news  # Yahoo!ニュース検索機能をインポート
 
 class MyClient(discord.Client):
     def __init__(self, intents):
@@ -29,16 +30,24 @@ class MyClient(discord.Client):
         if not message.content.startswith("!"):
             return
 
-        command = message.content[1:].strip().split(" ")
+        command = message.content[1:].strip().split(" ", 1)
+        cmd = command[0]
+        args = command[1] if len(command) > 1 else ""
 
-        if command[0] == "set_channel":
+        if cmd == "set_channel":
             await set_channel(message, self.temporary_settings)
-        elif command[0] == "question":
+        elif cmd == "question":
             await handle_question_navigation(command, message, self)
-        elif command[0] == "team":
+        elif cmd == "team":
             await self.handle_team_command(command, message)
-        elif command[0] == "set_schedule":
+        elif cmd == "set_schedule":
             await self.start_schedule_navigation(message)
+        elif cmd == "search":
+            if args:
+                result = await search_yahoo_news(args)
+                await message.channel.send(result)
+            else:
+                await message.channel.send("検索ワードを入力してください。")
         else:
             await message.channel.send("無効なコマンドです。")
 
