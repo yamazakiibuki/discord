@@ -8,7 +8,6 @@ from team import split_into_teams
 from keep import keep_alive
 from scheduler import initialize_scheduler
 from search import search_yahoo_news  # Yahoo!ニュース検索機能をインポート
-from command import handle_custom_command  # 追加
 
 class MyClient(discord.Client):
     def __init__(self, intents):
