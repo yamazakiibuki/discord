@@ -27,7 +27,7 @@ class MyClient(discord.Client):
             await handle_channel_setup(message, self.temporary_settings)
             return
 
-        if not message.content.startswith("/"):
+        if not message.content.startswith("!"):
             return
 
         command = message.content[1:].strip().split(" ", 1)
