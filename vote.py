@@ -1,4 +1,5 @@
 import discord
+import asyncio  # asyncio をインポート
 from database import save_vote, ensure_guild_settings
 
 async def handle_question_navigation(command, message, client):
@@ -53,7 +54,7 @@ async def create_vote_question_step_by_step(message, client):
         ensure_guild_settings(message.guild.id)
 
         # 投票を保存
-        save_vote(message.guild.id, question, options, None)
+        save_vote(message.guild.id, question, options)  # 4つ目の引数(None)を削除
 
         # 投票の表示
         embed = discord.Embed(title=question, color=discord.Colour.green())
