@@ -65,3 +65,4 @@ async def handle_custom_command(message):
         command = message.content[1:]
         if command in commands:
             await message.channel.send(commands[command])
+            return
