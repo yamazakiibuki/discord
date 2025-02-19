@@ -2,7 +2,8 @@ import psycopg2
 import json
 import os
 
-db_url = os.getenv("DATABASE_URL")
+db_url = "postgres://koyeb-adm:TJQV65jSfXBK@ep-curly-mode-a2v5q610.eu-central-1.pg.koyeb.app/koyebdb"
+
 
 def get_connection():
     return psycopg2.connect(db_url, sslmode="require")
