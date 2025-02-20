@@ -6,7 +6,7 @@ from settings import set_channel, handle_channel_setup
 from vote import handle_question_navigation
 from team import split_into_teams
 from keep import keep_alive
-from scheduler import initialize_scheduler
+from scheduler import initialize_scheduler, scheduler  # 修正
 from search import search_yahoo_news  # Yahoo!ニュース検索機能をインポート
 
 class MyClient(discord.Client):
@@ -16,7 +16,7 @@ class MyClient(discord.Client):
 
     async def on_ready(self):
         print('Startup Success!!!')
-        initialize_scheduler()
+        initialize_scheduler()  # スケジューラ初期化
         initialize_database()
 
     async def on_message(self, message):
@@ -92,6 +92,12 @@ class MyClient(discord.Client):
         except ValueError:
             await channel.send("日付や時刻の形式が正しくありません。例: 2024-12-25 15:00")
             return
+
+        async def reminder_task():
+            await channel.send(f"🔔 リマインダー: {content} の時間です！🔔")
+
+        scheduler.add_job(lambda: self.loop.create_task(reminder_task()), "date", run_date=schedule_time)
+        print(scheduler.get_jobs())  # 登録されたジョブ一覧を確認
 
         await channel.send(f"予定が設定されました！\n日時: {schedule_time}\n内容: {content}")
 
