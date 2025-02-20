@@ -23,10 +23,6 @@ class MyClient(discord.Client):
         if message.author.bot:
             return
 
-        # カスタムコマンドの処理
-        if await handle_custom_command(message):
-            return  # カスタムコマンドが処理された場合、他の処理をスキップ
-
         if message.author.id in self.temporary_settings:
             await handle_channel_setup(message, self.temporary_settings)
             return
